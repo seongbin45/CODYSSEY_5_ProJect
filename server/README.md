@@ -1,7 +1,10 @@
-# `server/` — FastAPI 라우트와 HTML
+# `server/` — FastAPI 라우트와 HTML (`fastapi-web`)
 
 이 폴더는 브라우저가 날짜를 넣고 `POST /api/plan`을 보내면 `src/pipeline.run_pipeline()`을 실행하는 FastAPI 앱입니다.  
 `GEMINI_API_KEY` 등 제공자 키는 프로세스 환경변수에만 있습니다. `index.html`과 `/api/plan` JSON에는 키가 들어가지 않습니다.
+
+`GET /api/keys`에 쓰는 `KEY_SERVER_TOKEN`은 콘솔에서 발급받지 않습니다.  
+만드는 명령은 루트 [README.md 1단계](../README.md)와 [scripts/README.md](../scripts/README.md)입니다.
 
 화면의 버튼·색·`fetch`는 [templates/README.md](templates/README.md)에 있습니다.
 
@@ -43,11 +46,19 @@
 | GET | `/results` | `results_index()`가 `results_dir()` 파일 목록 HTML을 문자열로 만듦 |
 | GET | `/results/파일이름` | `FileResponse`. `.md` / `.json`만, `..` 불가 |
 
-`GET /api/keys` 조건:
+`GET /api/keys` 조건 (`api_keys()`):
 
 - 환경변수 `KEY_SERVER_TOKEN`이 없으면 HTTP 500 (`서버에 KEY_SERVER_TOKEN 이 없습니다.`)
 - 헤더 `Authorization: Bearer {값}`이 `KEY_SERVER_TOKEN`과 다르면 HTTP 401
 - 맞으면 `{ "GEMINI_API_KEY": "...", ... }` — 값이 있는 이름만
+
+토큰을 새로 만들 때:
+
+```bat
+python scripts\make_key_server_token.py
+```
+
+출력 첫 줄을 Render Environment `KEY_SERVER_TOKEN`에 붙입니다. GitHub에는 올리지 않습니다.
 
 ---
 

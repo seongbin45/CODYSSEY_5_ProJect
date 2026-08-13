@@ -65,7 +65,14 @@ travel_planner.exe --key-server https://codyssey-5-project.onrender.com/api/keys
 5. 끝나면 같은 폴더에 `results\2026-08-20_travel_plan.md`가 생깁니다.
 
 토큰은 Render Environment의 `KEY_SERVER_TOKEN`과 같아야 합니다.  
-토큰을 채팅이나 GitHub에 올리지 마세요.
+Kakao/Google이 주는 값이 아닙니다. 이 브랜치에서 만듭니다.
+
+```bat
+python scripts\make_key_server_token.py
+```
+
+출력 첫 줄을 Render와 `--key-token`에 똑같이 씁니다. 채팅·GitHub·Release 본문에는 올리지 마세요.  
+단계: [루트 README 1단계](../README.md)
 
 다른 명령:
 
