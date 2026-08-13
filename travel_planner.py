@@ -9,6 +9,12 @@ Python 응용: API 활용 국내 여행지 추천 프로그램
 import argparse
 import os
 import sys
+from pathlib import Path
+
+if not getattr(sys, "frozen", False):
+    _SRC = str(Path(__file__).resolve().parent / "src")
+    if _SRC not in sys.path:
+        sys.path.insert(0, _SRC)
 
 from utils import (
     app_dir,

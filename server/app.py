@@ -7,12 +7,21 @@ Jinja TemplateResponse 는 Starlette 버전마다 인자 순서가 달라서 쓰
 
 import html
 import os
+import sys
 from pathlib import Path
 
+_ROOT = Path(__file__).resolve().parents[1]
+_SRC = _ROOT / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
 from dotenv import load_dotenv
-from fastapi import FastAPI, Form, HTTPException
+from typing import Optional
+
+from fastapi import FastAPI, Form, Header, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 
+from key_client import PROVIDER_KEYS, token_matches
 from pipeline import PipelineError, list_usable_models, run_pipeline
 from utils import check_api_keys, results_dir
 
@@ -52,6 +61,28 @@ def health():
         "kakao": bool(kakao),
         "kakao_key_len": len(kakao),
     }
+
+
+@app.get("/api/keys")
+def api_keys(authorization: Optional[str] = Header(default="")):
+    """
+    평가용 CLI/exe가 제공자 키를 받아 가는 엔드포인트.
+    KEY_SERVER_TOKEN 이 맞을 때만 키를 준다.
+    """
+    expected = os.environ.get("KEY_SERVER_TOKEN", "").strip()
+    if not expected:
+        raise HTTPException(status_code=500, detail="서버에 KEY_SERVER_TOKEN 이 없습니다.")
+    given = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        given = authorization[7:].strip()
+    if not token_matches(given, expected):
+        raise HTTPException(status_code=401, detail="unauthorized")
+    payload = {}
+    for name in PROVIDER_KEYS:
+        value = os.environ.get(name, "").strip()
+        if value:
+            payload[name] = value
+    return payload
 
 
 @app.get("/api/models")

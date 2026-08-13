@@ -92,23 +92,13 @@ python travel_planner.py --verify-models
 
 ## 3-3. 키 서버 (평가용, 권장)
 
-제공자 API 키는 exe에 넣지 않습니다. 평가 전에 제출자가 키 서버를 켜고, 평가자는 주소와 토큰만 사용합니다.
-
-제출자:
+제공자 API 키는 exe에 넣지 않습니다. Render FastAPI가 토큰을 확인한 뒤 키를 내려줍니다.
 
 ```bat
-python key_server.py --host 0.0.0.0 --port 8787
+travel_planner.exe --key-server https://codyssey-5-project.onrender.com/api/keys --key-token 토큰 --date "2026-08-20" --model gemini-2.5-flash
 ```
 
-평가자:
-
-```bat
-travel_planner.exe --key-server http://제출자IP:8787/keys --key-token 토큰 --date "2026-08-20" --model gemini-2.5-flash
-```
-
-토큰은 `.env`의 `KEY_SERVER_TOKEN`입니다. 제공자 키를 모르면 401입니다.
-
-exe를 다시 만들 때 `.env`는 포함하지 않습니다.
+토큰은 Render 환경변수 `KEY_SERVER_TOKEN`과 같아야 합니다.
 
 ```bat
 pip install pyinstaller
@@ -131,7 +121,14 @@ pyinstaller --noconfirm --clean --distpath export --workpath build travel_planne
 
 ## 5. 구조 (코드)
 
-- `travel_planner.py`: CLI 진입점. argparse 처리 및 3단계 파이프라인 흐름을 제어합니다.
+```
+travel_planner.py     CLI 진입점
+src/                  파이프라인, API 모듈, 키 클라이언트
+server/               FastAPI 웹
+export/               평가용 exe
+```
+
+- `travel_planner.py`: CLI 진입점. argparse 처리 및 파이프라인 실행.
 - `api_llm.py`: Gemini API 통신 모듈입니다. JSON 출력 제어 및 파싱 실패 시 재시도 로직이 포함되어 있습니다.
 - `api_map.py`: Kakao Local API 통신 모듈입니다. 인증 실패 및 검색 결과 0건 등의 예외 처리를 담당합니다.
 - `api_tmap.py`: TMAP 도보/대중교통 모듈입니다. 키가 없거나 실패해도 리포트 생성은 계속됩니다.

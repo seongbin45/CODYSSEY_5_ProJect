@@ -4,9 +4,12 @@
 제공자 키를 exe에 넣지 않고, 토큰이 맞는 요청만 서버에서 받아온다.
 """
 
+import hmac
 import os
 
 import requests
+
+DEFAULT_KEY_SERVER_URL = "https://codyssey-5-project.onrender.com/api/keys"
 
 PROVIDER_KEYS = (
     "GEMINI_API_KEY",
@@ -14,6 +17,12 @@ PROVIDER_KEYS = (
     "TMAP_OPEN_API_APP_KEY",
     "TOUR_API_SERVICE_KEY",
 )
+
+
+def token_matches(given, expected):
+    if not given or not expected or len(given) != len(expected):
+        return False
+    return hmac.compare_digest(given, expected)
 
 
 def apply_key_payload(payload, override=False):

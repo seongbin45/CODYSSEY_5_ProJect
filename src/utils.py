@@ -11,10 +11,13 @@ from datetime import datetime
 
 
 def app_dir():
-    """실행 파일이 있는 폴더. exe 옆 results/ 를 쓰기 위해 사용한다."""
+    """프로젝트 루트 또는 exe 폴더. results/ 와 .env 기준 경로."""
     if getattr(sys, "frozen", False):
         return os.path.dirname(os.path.abspath(sys.executable))
-    return os.path.dirname(os.path.abspath(__file__))
+    here = os.path.dirname(os.path.abspath(__file__))
+    if os.path.basename(here) == "src":
+        return os.path.dirname(here)
+    return here
 
 
 def resource_dir():
@@ -38,13 +41,16 @@ def load_runtime_env(key_server_url=None, key_server_token=None):
     """
     from dotenv import load_dotenv
 
-    from key_client import fetch_keys_from_server
+    from key_client import DEFAULT_KEY_SERVER_URL, fetch_keys_from_server
 
     load_dotenv(os.path.join(resource_dir(), ".env"), override=False)
     load_dotenv(os.path.join(app_dir(), ".env"), override=True)
 
+    has_local_gemini = bool(os.environ.get("GEMINI_API_KEY", "").strip())
     url = (key_server_url or os.environ.get("KEY_SERVER_URL", "")).strip()
     token = (key_server_token or os.environ.get("KEY_SERVER_TOKEN", "")).strip()
+    if not url and not has_local_gemini:
+        url = DEFAULT_KEY_SERVER_URL
     if not url:
         return
 

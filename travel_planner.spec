@@ -2,7 +2,7 @@
 
 a = Analysis(
     ['travel_planner.py'],
-    pathex=[],
+    pathex=['src'],
     binaries=[],
     datas=[],
     hiddenimports=[
