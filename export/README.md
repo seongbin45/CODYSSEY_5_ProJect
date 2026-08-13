@@ -3,7 +3,11 @@
 `pyinstaller --distpath export travel_planner.spec`이 끝나면 여기에 `travel_planner.exe`가 생깁니다.  
 Python이 없는 Windows에서도 같은 argparse를 쓸 수 있습니다.
 
-exe 자체는 GitHub에 올리지 않습니다. `.gitignore`의 `export/*` + `!export/README.md`입니다.
+exe는 Git 커밋에 넣지 않습니다 (`.gitignore`의 `export/*` + `!export/README.md`).  
+받으려면 Release를 엽니다.
+
+- 릴리스: https://github.com/seongbin45/CODYSSEY_5_ProJect/releases/tag/v1.0.0
+- 직접 받기: https://github.com/seongbin45/CODYSSEY_5_ProJect/releases/download/v1.0.0/travel_planner.exe
 
 ---
 

@@ -222,6 +222,11 @@ pyinstaller --noconfirm --clean --distpath export --workpath build travel_planne
 `travel_planner.spec`의 `datas=[]`이므로 제공자 키가 exe 안에 들어가지 않습니다.  
 실행 인자는 [export/README.md](export/README.md)를 봅니다.
 
+이미 만든 exe는 Git이 아니라 Release에 있습니다.
+
+- https://github.com/seongbin45/CODYSSEY_5_ProJect/releases/tag/v1.0.0
+- https://github.com/seongbin45/CODYSSEY_5_ProJect/releases/download/v1.0.0/travel_planner.exe
+
 ---
 
 ## 브랜치
