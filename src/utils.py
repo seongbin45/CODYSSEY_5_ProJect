@@ -35,22 +35,19 @@ def results_dir():
 
 def load_runtime_env(key_server_url=None, key_server_token=None):
     """
-    1) 로컬/번들 .env (개발용 또는 클라이언트 설정)
-    2) KEY_SERVER_URL 이 있으면 백엔드에서 제공자 키를 받아 온다.
+    로컬 .env 를 읽는다.
+    --key-server 또는 KEY_SERVER_URL 을 명시한 경우에만 키 서버를 호출한다.
     이미 있는 환경변수는 덮어쓰지 않는다.
     """
     from dotenv import load_dotenv
 
-    from key_client import DEFAULT_KEY_SERVER_URL, fetch_keys_from_server
+    from key_client import fetch_keys_from_server
 
     load_dotenv(os.path.join(resource_dir(), ".env"), override=False)
     load_dotenv(os.path.join(app_dir(), ".env"), override=True)
 
-    has_local_gemini = bool(os.environ.get("GEMINI_API_KEY", "").strip())
     url = (key_server_url or os.environ.get("KEY_SERVER_URL", "")).strip()
     token = (key_server_token or os.environ.get("KEY_SERVER_TOKEN", "")).strip()
-    if not url and not has_local_gemini:
-        url = DEFAULT_KEY_SERVER_URL
     if not url:
         return
 

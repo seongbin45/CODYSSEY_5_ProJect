@@ -40,7 +40,7 @@ from api_tour import search_official_places
 
 def parse_args():
     parser = argparse.ArgumentParser(description="API 활용 국내 여행지 추천 프로그램")
-    parser.add_argument("-date", "--date", dest="date", help="여행 날짜 (YYYY-MM-DD 형식)")
+    parser.add_argument("-date", "--date", dest="date", help="여행 날짜 (YYYY-MM-DD). 과제 옵션은 -date")
     parser.add_argument(
         "--model",
         dest="model",
@@ -68,7 +68,7 @@ def parse_args():
     )
     args = parser.parse_args()
     if not args.list_models and not args.verify_models and not args.date:
-        parser.error("-date / --date 는 필수입니다.")
+        parser.error("-date 는 필수입니다. 예: python travel_planner.py -date 2026-03-15")
     return args, parser
 
 
@@ -135,7 +135,7 @@ def main():
         transit_legs = cached_data.get("transit_legs", [])
         errors = cached_data.get("errors", [])
     else:
-        print("[1/5] 1차 추천 생성 중(LLM)...")
+        print("[1/3] 1차 추천 생성 중(LLM)...")
         recommendation = get_recommendation(gemini_key, selected_model, date_str, errors)
 
         if not recommendation:
@@ -145,7 +145,7 @@ def main():
         recommended_city = recommendation.get("recommended_city", "대한민국")
         print(f"  - recommended_city: {recommended_city}")
 
-        print("[2/5] 맛집 검색 중(지도/장소 API)...")
+        print("[2/3] 맛집 검색 중(지도/장소 API)...")
         restaurants = search_restaurants(kakao_key, recommended_city, errors)
 
         if restaurants:
@@ -153,9 +153,9 @@ def main():
         else:
             print("  - 검색 결과 0건 (또는 오류 발생)")
 
-        print("[3/5] 공인 관광지/숙소 조회 중(TourAPI)...")
         tour_places = {"attractions": [], "stays": []}
         if tour_key:
+            print("[확장] 관광지/숙소 조회 중(TourAPI)...")
             tour_places = search_official_places(
                 tour_key, recommended_city, date_str, errors
             )
@@ -167,19 +167,15 @@ def main():
                 f"  - 중심 {attr_n}곳, 공식 숙소 {stay_n}곳, "
                 f"연관 {rel_n}곳, 집중률 {crowd_n}건"
             )
-        else:
-            print("  - TOUR_API_SERVICE_KEY 미설정, 관광지/숙소 생략")
 
-        print("[4/5] 이동 정보 조회 중(TMAP)...")
         transit_legs = []
         if tmap_key:
+            print("[확장] 이동 정보 조회 중(TMAP)...")
             transit_legs = build_travel_legs(tmap_key, restaurants, date_str, errors)
             if transit_legs:
                 print(f"  - 이동 구간 {len(transit_legs)}개 조회 완료")
             else:
                 print("  - 이동 정보 없음 (좌표 부족 또는 검색 실패)")
-        else:
-            print("  - TMAP_OPEN_API_APP_KEY 미설정, 이동 정보 생략")
 
         raw_filepath = save_raw_data(
             date_str,
@@ -192,7 +188,7 @@ def main():
         )
         print(f"  - 원본 데이터 저장 완료: {raw_filepath}")
 
-    print("[5/5] 최종 리포트 생성 중(LLM)...")
+    print("[3/3] 최종 리포트 생성 중(LLM)...")
     report_md = generate_report(
         gemini_key,
         selected_model,
