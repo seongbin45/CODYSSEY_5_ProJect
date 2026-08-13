@@ -148,7 +148,7 @@ Invoke-RestMethod -Headers @{ Authorization = "Bearer $t" } -Uri "https://codyss
 
 Render → 해당 Web Service → **Environment** → **Add Environment Variable**
 
-이름은 아래와 **코드에 작성된 변수의 이름과 동일하게** 만듭니다. 값은 대시보드에만 붙입니다.
+이름은 아래처럼 작성하면 됩니다. **코드에 작성된 변수의 이름과 동일하게** 만듭니다. 값은 대시보드에만 붙입니다.
 
 ```
 GEMINI_API_KEY
