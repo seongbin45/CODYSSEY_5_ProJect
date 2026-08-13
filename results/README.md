@@ -1,7 +1,9 @@
-# `results/` — `save_raw_data` / `save_report`가 쓰는 폴더
+# `results/` — 실행 후 리포트가 생기는 폴더
+
+프로그램을 아직 안 켰다면 루트 [README.md](../README.md) 6~7단계부터 하세요.
 
 이 폴더는 처음에는 이 README만 있을 수 있습니다.  
-`python travel_planner.py --date ...` 또는 `POST /api/plan`을 한 번 실행하면 파일이 생깁니다.
+`python travel_planner.py --date ...` 를 한 번 실행하면 파일이 생깁니다.
 
 Git에는 결과 파일을 올리지 않습니다. `.gitignore`의 `results/*` + `!results/README.md` 때문입니다.
 

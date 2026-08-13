@@ -1,11 +1,14 @@
 # `src/` — API를 호출하는 파이썬 모듈
 
+아직 프로그램을 한 번도 안 켜 봤다면 이 파일이 아니라 루트 [README.md](../README.md)부터 하세요.  
+키 받기 → `.env` 만들기 → `python travel_planner.py --date ...` 가 먼저입니다.
+
 이 폴더의 파일이 Gemini / Kakao / TMAP / TourAPI에 `requests`로 GET·POST 하고, 반환 dict를 다음 함수 인자로 넘깁니다.
 
 - 터미널: `travel_planner.py`의 `main()`이 아래 함수를 **직접** import 해서 같은 순서로 호출합니다. `pipeline.run_pipeline()`은 쓰지 않습니다.
 - 웹: `server/app.py`의 `POST /api/plan`이 `pipeline.run_pipeline()`만 호출합니다.
 
-초심자는 아래 순서로 읽으면 됩니다.
+코드를 읽을 때는 아래 순서로 보면 됩니다.
 
 ---
 
