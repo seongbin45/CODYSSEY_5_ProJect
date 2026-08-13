@@ -118,12 +118,13 @@ def results_index():
 <style>
 body {{ font-family: sans-serif; background:#0f1419; color:#e7ecf1; margin:0; }}
 main {{ max-width:880px; margin:0 auto; padding:32px 20px; }}
-a {{ color:#93c5fd; }}
-ul {{ line-height:1.9; }}
-.muted {{ color:#8b9aaa; }}
+a.btn {{ display:inline-flex; padding:10px 14px; border-radius:8px; background:#3b82f6; color:#fff; font-weight:600; text-decoration:none; }}
+ul {{ line-height:2; padding-left:0; list-style:none; }}
+ul a {{ color:#bfdbfe; font-size:1.05rem; }}
+.muted {{ color:#cbd5e1; }}
 </style></head>
 <body><main>
-  <p><a href="/">← 추천 페이지</a></p>
+  <p><a class="btn" href="/">추천 페이지로 돌아가기</a></p>
   <h1>저장된 리포트</h1>
   <p class="muted">서버 results 폴더의 Markdown / JSON 입니다.</p>
   <ul>{body}</ul>

@@ -10,14 +10,19 @@
     main { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
     h1 { font-size: 1.6rem; margin: 0 0 8px; }
     p.lead { color: #9aa8b5; margin-top: 0; }
+    .header-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .header-row h1 { margin-bottom: 0; }
     form { display: grid; gap: 12px; background: #182029; padding: 20px; border-radius: 14px; }
     label { font-size: 0.9rem; color: #c5d0d8; }
     input, select, button { font: inherit; padding: 10px 12px; border-radius: 8px; border: 1px solid #2b3945; }
     input, select { background: #10161c; color: inherit; }
     button { background: #3b82f6; color: white; border: 0; cursor: pointer; }
     button:disabled { opacity: 0.6; cursor: wait; }
+    a.btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 8px; background: #f8fafc; color: #0f172a; font-weight: 600; text-decoration: none; border: 1px solid #e2e8f0; }
+    a.btn:hover { background: #ffffff; }
+    a.btn-primary { background: #3b82f6; color: #ffffff; border-color: #2563eb; }
+    a.btn-primary:hover { background: #2563eb; }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
-    .actions a { display: inline-block; padding: 10px 12px; border-radius: 8px; background: #243140; color: #93c5fd; text-decoration: none; }
     pre, article { background: #182029; padding: 16px; border-radius: 14px; overflow: auto; }
     .muted { color: #8b9aaa; font-size: 0.85rem; }
     .err { color: #fda4af; }
@@ -25,9 +30,13 @@
 </head>
 <body>
   <main>
-    <h1>국내 여행지 추천</h1>
-    <p class="lead">날짜를 넣으면 서버가 Gemini · Kakao · TourAPI · TMAP을 이어서 리포트를 만듭니다. API 키는 브라우저로 내려가지 않습니다.</p>
-    <p><a href="/results">저장된 리포트 저장소 열기</a></p>
+    <div class="header-row">
+      <div>
+        <h1>국내 여행지 추천</h1>
+        <p class="lead">날짜를 넣으면 서버가 Gemini · Kakao · TourAPI · TMAP을 이어서 리포트를 만듭니다. API 키는 브라우저로 내려가지 않습니다.</p>
+      </div>
+      <a class="btn btn-primary" href="/results">저장된 리포트 저장소 열기</a>
+    </div>
     <form id="plan-form">
       <label>여행 날짜
         <input type="date" name="date" required value="2026-08-20">
@@ -73,9 +82,9 @@
         report.innerHTML = "<pre>" + (body.report_md || "") + "</pre>";
         actions.hidden = false;
         actions.innerHTML =
-          '<a href="' + (body.report_url || "/results") + '">저장된 Markdown 열기</a>' +
-          '<a href="' + (body.raw_url || "/results") + '">원본 JSON 열기</a>' +
-          '<a href="' + (body.results_url || "/results") + '">저장소 전체 보기</a>';
+          '<a class="btn btn-primary" href="' + (body.report_url || "/results") + '">저장된 Markdown 열기</a>' +
+          '<a class="btn" href="' + (body.raw_url || "/results") + '">원본 JSON 열기</a>' +
+          '<a class="btn" href="' + (body.results_url || "/results") + '">저장소 전체 보기</a>';
       } catch (err) {
         logs.className = "err";
         logs.textContent = String(err);
