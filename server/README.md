@@ -1,107 +1,117 @@
-# `server/` — 웹으로 실행하는 입구
+# `server/` — FastAPI 라우트와 HTML
 
-이 폴더는 **브라우저에서 날짜를 넣고 리포트를 받는 FastAPI 서버**입니다.  
-Gemini/Kakao 키는 서버 환경변수에만 있고, HTML이나 JSON 응답으로 내려가지 않습니다.
+이 폴더는 브라우저가 날짜를 넣고 `POST /api/plan`을 보내면 `src/pipeline.run_pipeline()`을 실행하는 FastAPI 앱입니다.  
+`GEMINI_API_KEY` 등 제공자 키는 프로세스 환경변수에만 있습니다. `index.html`과 `/api/plan` JSON에는 키가 들어가지 않습니다.
 
-웹 화면의 버튼·색·주소는 [templates/README.md](templates/README.md)에 있습니다.
+화면의 버튼·색·`fetch`는 [templates/README.md](templates/README.md)에 있습니다.
 
 ---
 
-## 1. 왜 웹이 있나
+## 1. 왜 `server/`가 있나
 
-과제 본편은 터미널(`travel_planner.py`)입니다.  
-평가자가 파이썬을 설치하지 않고도 흐름을 볼 수 있게, 같은 `src/pipeline.py`를 웹에서도 돌립니다.
+과제 제출본은 터미널의 `python travel_planner.py --date ...`입니다.  
+평가자가 파이썬을 설치하지 않아도 `https://codyssey-5-project.onrender.com`에서 같은 `src/` 함수가 돌아가는지 보게 하려고 `server/app.py`를 두었습니다.
 
-배포 주소 (현재): https://codyssey-5-project.onrender.com  
-코드 브랜치: https://github.com/seongbin45/CODYSSEY_5_ProJect/tree/fastapi-web
+- 배포 URL: https://codyssey-5-project.onrender.com
+- 배포가 보는 브랜치: https://github.com/seongbin45/CODYSSEY_5_ProJect/tree/fastapi-web
 
 ---
 
 ## 2. 파일
 
-| 파일 | 역할 |
+| 파일 | 내용 |
 |---|---|
-| `app.py` | 주소(라우트)와 동작. 여기가 서버의 본문입니다. |
+| `app.py` | `@app.get` / `@app.post` 함수. 여기가 주소 정의 |
 | `__init__.py` | 이 폴더를 패키지로 만듦 |
-| `templates/index.html` | 첫 화면 HTML |
+| `templates/index.html` | `GET /`이 읽는 HTML 원문 |
 
 시작할 때 `app.py`는 상위 폴더의 `src/`를 `sys.path`에 넣습니다.  
-그래서 `from pipeline import run_pipeline`이 됩니다.
+그래서 `from pipeline import run_pipeline`이 됩니다.  
+`load_dotenv()`는 프로세스 cwd의 `.env`를 읽습니다. 로컬에서는 프로젝트 루트에서 uvicorn을 켜세요.
 
 ---
 
-## 3. 주소표 (외울 필요 없이 이 표만 보면 됨)
+## 3. 주소
 
-| 방법 | 주소 | 하는 일 |
+| 방법 | 주소 | 함수 / 하는 일 |
 |---|---|---|
-| GET, HEAD | `/` | 첫 화면. Render 헬스체크용 HEAD도 받음 |
-| GET | `/health` | 서버가 살아 있는지, Gemini/Kakao 키가 **있는지**만 (값은 안 줌) |
-| GET | `/api/models` | 선택 가능한 Gemini 모델 이름 목록 |
-| POST | `/api/plan` | 날짜·모델로 파이프라인 실행. 리포트 본문을 JSON으로 반환 |
-| GET | `/api/keys` | **토큰이 있을 때만** 제공자 키 JSON. exe/CLI용 |
-| GET | `/results` | 저장된 md/json 목록 페이지 |
-| GET | `/results/파일이름` | 그 파일 다운로드/열기 |
+| GET, HEAD | `/` | `home()` → `_render_index()`가 `index.html`의 `<select name="model">`만 채움. Render 헬스체크가 HEAD를 보냄 |
+| GET | `/health` | `health()` — `ok`, `gemini`(bool), `kakao`(bool), `kakao_key_len`(길이만). 키 문자열 없음 |
+| GET | `/api/models` | `list_usable_models()` 결과 `{ "models": [...] }` |
+| POST | `/api/plan` | `run_pipeline(date, model, use_cache)` 실행 후 JSON 반환 |
+| GET | `/api/keys` | 헤더 토큰이 맞을 때만 `PROVIDER_KEYS` JSON. 화면 버튼 없음 |
+| GET | `/results` | `results_index()`가 `results_dir()` 파일 목록 HTML을 문자열로 만듦 |
+| GET | `/results/파일이름` | `FileResponse`. `.md` / `.json`만, `..` 불가 |
 
-`/api/keys`는 화면 버튼이 아닙니다.  
-헤더 `Authorization: Bearer {KEY_SERVER_TOKEN}` 이 맞아야 200입니다. 틀리면 401입니다.
+`GET /api/keys` 조건:
+
+- 환경변수 `KEY_SERVER_TOKEN`이 없으면 HTTP 500 (`서버에 KEY_SERVER_TOKEN 이 없습니다.`)
+- 헤더 `Authorization: Bearer {값}`이 `KEY_SERVER_TOKEN`과 다르면 HTTP 401
+- 맞으면 `{ "GEMINI_API_KEY": "...", ... }` — 값이 있는 이름만
 
 ---
 
-## 4. `/api/plan`이 받는 값과 주는 값
+## 4. `POST /api/plan`이 받는 값과 주는 값
 
-브라우저 폼이 `multipart/form-data`로 보냅니다.
+브라우저 `FormData`가 `multipart/form-data`로 보냅니다.
 
 - `date` : `YYYY-MM-DD` (필수)
-- `model` : 예 `gemini-2.5-flash` (비우면 서버가 기본 모델)
-- `use_cache` : 같은 날짜 JSON이 있으면 재사용
+- `model` : 예 `gemini-2.5-flash` (빈 문자열이면 `run_pipeline`이 `gemini-2.5-flash`를 preferred로 씀)
+- `use_cache` : 기본 True. 같은 날짜의 `results/{date}_raw_data.json`이 있으면 1~4단계 HTTP를 생략
 
-성공 시 JSON에 `logs`, `report_md`, `report_url`, `raw_url`, `results_url`이 들어 있습니다.  
-키는 들어 있지 않습니다.
+성공 JSON 키: `date`, `model`, `logs`, `errors`, `report_md`, `recommendation`, `restaurants`, `report_url`, `raw_url`, `results_url`.  
+제공자 키는 없습니다.
+
+실패:
+
+- `PipelineError` → HTTP 400, body `{ "detail": "..." }`
+- 그 외 예외 → HTTP 502
 
 ---
 
 ## 5. 로컬에서 켜는 순서
 
-1. 프로젝트 루트에 `.env`를 채웁니다. ([루트 README 3단계](../README.md))
-2. 패키지를 설치합니다. `pip install -r requirements.txt`
-3. 루트에서 실행합니다.
+1. 프로젝트 루트 `.env`에 키를 넣습니다. ([루트 README 3단계](../README.md))
+2. `pip install -r requirements.txt`
+3. **루트에서** 실행합니다. (cwd가 `.env`와 `src`를 찾게)
 
 ```bat
 cd C:\Users\seong\Downloads\CODYSSEY_5_ProJect
 uvicorn server.app:app --reload --port 8000
 ```
 
-4. 브라우저에서 http://127.0.0.1:8000
-5. 날짜를 고르고 **리포트 생성**
-6. **저장된 리포트 저장소 열기** → `/results`
+4. 브라우저 http://127.0.0.1:8000
+5. 날짜를 고르고 **리포트 생성** → `POST /api/plan`
+6. **저장된 리포트 저장소 열기** → `GET /results`
 
-`--reload`는 코드를 저장하면 서버가 다시 시작됩니다.
+`--reload`는 `.py`를 저장하면 uvicorn이 프로세스를 다시 시작합니다.
 
 ---
 
-## 6. 클라우드(Render)에 올리는 순서
+## 6. Render에 올리는 순서
 
-자세한 화면 클릭은 루트의 [DEPLOY.md](../DEPLOY.md)와 같습니다. 요약만 적습니다.
+클릭 단위는 루트 [DEPLOY.md](../DEPLOY.md)와 같습니다. 여기서는 값만 적습니다.
 
-1. GitHub 저장소의 `fastapi-web` 브랜치를 Render Web Service에 연결
+1. GitHub `fastapi-web` 브랜치를 Render Web Service에 연결
 2. Docker / `render.yaml` 사용
-3. Environment에 키를 넣음 (`GEMINI_API_KEY`, `KAKAO_REST_API_KEY`, 선택 키, `KEY_SERVER_TOKEN`)
+3. Environment에 넣기: `GEMINI_API_KEY`, `KAKAO_REST_API_KEY`, (선택) `TMAP_OPEN_API_APP_KEY`, `TOUR_API_SERVICE_KEY`, **`KEY_SERVER_TOKEN`**
 4. Deploy
-5. 첫 화면이 열리는지, `/health`의 `kakao: true` 인지 확인
+5. `GET https://codyssey-5-project.onrender.com/health` 에서 `kakao: true` 인지, `kakao_key_len`이 32인지 확인
 
-무료 인스턴스는 잠시 꺼졌다가 다시 켜질 수 있고, 디스크의 `results/`는 재시작 후 사라질 수 있습니다.
+무료 인스턴스는 꺼졌다가 첫 요청에 깨어납니다. 디스크의 `/app/results/`는 재시작 후 없을 수 있습니다.
 
 ---
 
-## 7. 자주 보는 오류
+## 7. 자주 보는 HTTP / 콘솔 메시지
 
-- 첫 화면 500 + `TemplateResponse` / `unhashable dict` : 예전 버그. 지금은 Jinja를 쓰지 않고 HTML을 직접 줍니다.
-- 맛집 0곳 + Kakao 401 : Render의 Kakao 키가 REST 키가 아니거나 잘렸습니다. 보통 32자입니다.
-- `/api/keys` 401 : 토큰이 없거나 Render의 `KEY_SERVER_TOKEN`과 다릅니다.
-- `/api/keys` 500 : 서버에 `KEY_SERVER_TOKEN` 자체가 없습니다.
+- 첫 화면 500 + `TemplateResponse` / `unhashable dict` : 예전 코드. 지금은 `HTMLResponse` + 문자열 치환입니다.
+- 맛집 0곳 + Kakao 401 : Render의 `KAKAO_REST_API_KEY`가 REST 키가 아니거나 잘림. `/health`의 `kakao_key_len`이 32가 아니면 다시 붙입니다.
+- `/api/keys` 401 : 클라이언트의 `--key-token`과 Render `KEY_SERVER_TOKEN`이 다름
+- `/api/keys` 500 : Render Environment에 `KEY_SERVER_TOKEN` 키가 없음
+- HEAD `/` 405 : 예전. 지금은 `api_route(..., methods=["GET", "HEAD"])`
 
 ---
 
 위로: [프로젝트 README](../README.md)  
-엔진: [src/README.md](../src/README.md)  
-화면 HTML: [templates/README.md](templates/README.md)
+호출하는 함수: [src/README.md](../src/README.md)  
+HTML: [templates/README.md](templates/README.md)

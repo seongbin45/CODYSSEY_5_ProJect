@@ -1,78 +1,82 @@
-# `server/templates/` — 브라우저에 보이는 화면
+# `server/templates/` — `GET /`이 보내는 HTML
 
-이 폴더에는 **첫 화면 HTML 한 장**이 있습니다.  
-파이썬이 이 파일을 읽어서 모델 목록만 끼워 넣은 뒤 그대로 브라우저에 보냅니다.
+이 폴더에는 `index.html` 한 파일이 있습니다.  
+`server/app.py`의 `_render_index()`가 이 파일을 읽고, `<select name="model">` … `</select>` 사이만 모델 `<option>`으로 바꾼 뒤 `HTMLResponse`로 보냅니다.
 
 ---
 
 ## 1. 파일이 하나인 이유
 
-원래 Jinja 템플릿(`{% for %}`)을 쓰려 했으나, Starlette 버전에 따라 `TemplateResponse` 인자 순서가 달라 서버가 500을 냈습니다.  
-그래서 `index.html`은 **일반 HTML + 브라우저 JavaScript**로 두었습니다.
+처음에는 Jinja (`{% for %}`)와 `TemplateResponse`를 쓰려 했습니다.  
+Starlette 버전에 따라 `TemplateResponse`의 `request` / `name` 인자 순서가 달라 서버가 500 (`unhashable dict`)을 냈습니다.
 
-서버(`app.py`의 `_render_index`)가 하는 일은 한 가지뿐입니다.
+그래서 `index.html`은 **일반 HTML + `<script>`** 입니다. Jinja 문법이 없습니다.
 
-- `<select name="model"> ... </select>` 사이를, 사용 가능한 모델 `<option>`으로 바꿔 끼움
+`_render_index()`가 하는 일:
 
-날짜 입력, 버튼, 로그, 리포트 표시는 모두 이 HTML 안의 스크립트가 합니다.
+1. `index.html` 전체를 문자열로 읽음 (`app.py` 로드 시 한 번)
+2. `'<select name="model">'` 위치와 `'</select>'` 위치를 찾음
+3. 그 사이를 `list_usable_models()`가 준 이름들의 `<option>`으로 교체
+4. 못 찾으면 원문 그대로 반환
+
+날짜 입력, 버튼 클릭, 로그·리포트 표시는 모두 이 파일 안의 `fetch`가 합니다.
 
 ---
 
-## 2. `index.html`을 구역으로 나누면
+## 2. `index.html` 구역
 
-### 머리글
+### 위쪽 (`header-row`)
 
-- 제목: 국내 여행지 추천
-- 설명 문장
-- 파란 버튼: **저장된 리포트 저장소 열기** → 같은 사이트의 `/results`
-- 흰 버튼: **GitHub 코드 보기** → `fastapi-web` 브랜치
+- `<h1>` : 국내 여행지 추천
+- `<p class="lead">` : 설명 한 줄
+- `<a class="btn btn-primary" href="/results">` : **저장된 리포트 저장소 열기**
+- `<a class="btn" href="https://github.com/seongbin45/CODYSSEY_5_ProJect/tree/fastapi-web">` : **GitHub 코드 보기**
 
-### 입력 폼
+### 폼 (`#plan-form`)
 
-- 여행 날짜 (`<input type="date" name="date">`)
-- 모델 (`<select name="model">`)
-- **리포트 생성** 버튼 → `POST /api/plan`
+- `<input type="date" name="date" required>` — 기본값 `2026-08-20`
+- `<select name="model">` — 서버가 option을 채움
+- `<button type="submit">리포트 생성</button>` → 아래 3절의 `POST /api/plan`
 
 ### 결과
 
-- 진행 로그 (`#logs`)
-- 생성 후에만 보이는 버튼들 (`#result-actions`)
-  - 저장된 Markdown 열기
-  - 원본 JSON 열기
-  - 저장소 전체 보기
-- 리포트 본문 (`#report`)
+- `<pre id="logs">` : 진행 로그
+- `<div id="result-actions">` : 생성 후에만 보임 (`hidden` 제거)
+  - `report_url` → 저장된 Markdown
+  - `raw_url` → 원본 JSON
+  - `results_url` → `/results`
+- `<article id="report">` : 리포트 본문
 
 ---
 
-## 3. 버튼을 눌렀을 때 (브라우저 안)
+## 3. **리포트 생성**을 눌렀을 때 (`<script>`)
 
-1. 폼 전송을 가로챕니다. (`event.preventDefault()`)
-2. `FormData`로 `date`, `model`을 `/api/plan`에 POST 합니다.
-3. 응답 JSON의 `logs`를 로그 칸에 넣습니다.
-4. `report_md`를 `<pre>`로 보여 줍니다.
-5. `report_url`, `raw_url`, `results_url`로 버튼을 만듭니다.
+1. `event.preventDefault()`로 일반 form GET/POST를 막음
+2. `new FormData(form)`으로 `date`, `model`을 담음
+3. `fetch("/api/plan", { method: "POST", body: data })`
+4. 응답 JSON의 `logs`를 `#logs`에 넣음
+5. `report_md`를 `#report`에 넣음
+6. `report_url`, `raw_url`, `results_url`로 `#result-actions` 안의 `<a class="btn">`을 만듦
 
-실패하면 `detail` 메시지를 빨간 글씨로 보여 줍니다.  
-생성에는 보통 20~40초가 걸립니다.
-
----
-
-## 4. 색이 어두운 이유와 버튼 규칙
-
-배경은 짙은 남색입니다. 그냥 `<a>`만 쓰면 링크가 거의 안 보입니다.  
-그래서 모든 이동 버튼은 `class="btn"` 또는 `class="btn btn-primary"`를 씁니다.
-
-- `btn-primary` : 파란 배경, 흰 글씨 (중요한 이동)
-- `btn` : 흰 배경, 검은 글씨 (보조 이동)
-
-화면을 고칠 때는 이 클래스를 유지하세요.
+`res.ok`가 아니면 `body.detail`을 `#logs`에 `class="err"`로 넣습니다.  
+서버에서 Gemini·Kakao를 부르므로 보통 20~40초입니다.
 
 ---
 
-## 5. 저장소 목록 페이지는 어디에 있나
+## 4. 버튼 색 (`<style>`)
 
-`/results` 화면 HTML은 이 폴더가 아니라 `server/app.py`의 `results_index()` 안에 문자열로 있습니다.  
-파일 목록이 매번 달라서 파이썬이 그때그때 만들기 때문입니다.
+`body` 배경은 `#0f1419`입니다. 기본 `<a>`만 쓰면 링크가 거의 안 보입니다.  
+이동 링크는 반드시 `class="btn"` 또는 `class="btn btn-primary"`를 씁니다.
+
+- `btn-primary` : 파란 배경 `#3b82f6`, 흰 글씨 (저장소 열기)
+- `btn` : 흰 배경 `#f8fafc`, 글씨 `#0f172a` (GitHub, 생성 후 파일 링크)
+
+---
+
+## 5. `/results` 목록 HTML은 이 폴더에 없음
+
+`GET /results` HTML은 `server/app.py`의 `results_index()`가 f-string으로 만듭니다.  
+파일 목록이 실행마다 달라서 정적 HTML로 두지 않았습니다.
 
 ---
 
