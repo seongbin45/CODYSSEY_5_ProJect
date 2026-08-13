@@ -124,7 +124,10 @@ ul a {{ color:#bfdbfe; font-size:1.05rem; }}
 .muted {{ color:#cbd5e1; }}
 </style></head>
 <body><main>
-  <p><a class="btn" href="/">추천 페이지로 돌아가기</a></p>
+  <p>
+    <a class="btn" href="/">추천 페이지로 돌아가기</a>
+    <a class="btn" href="https://github.com/seongbin45/CODYSSEY_5_ProJect/tree/fastapi-web" target="_blank" rel="noopener noreferrer" style="margin-left:8px;background:#f8fafc;color:#0f172a;">GitHub 코드 보기</a>
+  </p>
   <h1>저장된 리포트</h1>
   <p class="muted">서버 results 폴더의 Markdown / JSON 입니다.</p>
   <ul>{body}</ul>

@@ -22,6 +22,7 @@
     a.btn:hover { background: #ffffff; }
     a.btn-primary { background: #3b82f6; color: #ffffff; border-color: #2563eb; }
     a.btn-primary:hover { background: #2563eb; }
+    .header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
     pre, article { background: #182029; padding: 16px; border-radius: 14px; overflow: auto; }
     .muted { color: #8b9aaa; font-size: 0.85rem; }
@@ -35,7 +36,10 @@
         <h1>국내 여행지 추천</h1>
         <p class="lead">날짜를 넣으면 서버가 Gemini · Kakao · TourAPI · TMAP을 이어서 리포트를 만듭니다. API 키는 브라우저로 내려가지 않습니다.</p>
       </div>
-      <a class="btn btn-primary" href="/results">저장된 리포트 저장소 열기</a>
+      <div class="header-actions">
+        <a class="btn btn-primary" href="/results">저장된 리포트 저장소 열기</a>
+        <a class="btn" href="https://github.com/seongbin45/CODYSSEY_5_ProJect/tree/fastapi-web" target="_blank" rel="noopener noreferrer">GitHub 코드 보기</a>
+      </div>
     </div>
     <form id="plan-form">
       <label>여행 날짜
