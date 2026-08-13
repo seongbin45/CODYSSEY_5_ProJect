@@ -28,7 +28,6 @@ from utils import (
 from api_llm import (
     list_models,
     print_model_catalog,
-    select_model,
     get_recommendation,
     generate_report,
     verify_all_models,
@@ -37,6 +36,8 @@ from api_map import search_restaurants
 from api_tmap import build_travel_legs
 from api_tour import search_official_places
 
+DEFAULT_MODEL = "gemini-2.5-flash"
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="API 활용 국내 여행지 추천 프로그램")
@@ -44,7 +45,8 @@ def parse_args():
     parser.add_argument(
         "--model",
         dest="model",
-        help="사용할 Gemini 모델 ID. 생략하면 키가 조회한 목록에서 선택합니다.",
+        default=DEFAULT_MODEL,
+        help=f"Gemini 모델 ID (기본: {DEFAULT_MODEL})",
     )
     parser.add_argument(
         "--list-models",
@@ -57,14 +59,9 @@ def parse_args():
         help="조회된 모든 모델을 하나씩 호출해 텍스트/JSON 호환 여부를 검증하고 저장합니다.",
     )
     parser.add_argument(
-        "--key-server",
-        dest="key_server",
-        help="제공자 키를 받아올 백엔드 URL (예: http://127.0.0.1:8787/keys)",
-    )
-    parser.add_argument(
-        "--key-token",
-        dest="key_token",
-        help="키 서버 Bearer 토큰. 제공자 API 키가 아닙니다.",
+        "--no-cache",
+        action="store_true",
+        help="같은 날짜의 results JSON이 있어도 1·2단계 API를 다시 호출합니다.",
     )
     args = parser.parse_args()
     if not args.list_models and not args.verify_models and not args.date:
@@ -76,7 +73,7 @@ def main():
     args, parser = parse_args()
 
     os.chdir(app_dir())
-    load_runtime_env(key_server_url=args.key_server, key_server_token=args.key_token)
+    load_runtime_env()
     keys = check_api_keys(
         require_kakao=not (args.list_models or args.verify_models)
     )
@@ -114,21 +111,20 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    print("[정보] 이 API 키가 조회할 수 있는 모델 목록을 불러옵니다...")
-    try:
-        selected_model = select_model(gemini_key, preferred=args.model)
-    except RuntimeError as exc:
-        print(f"[오류] {exc}")
-        sys.exit(1)
-
+    selected_model = args.model
     print(f"[정보] 선택된 모델: {selected_model}\n")
 
     errors = []
 
-    # [보너스] 결과 캐싱 확인
-    cached_data = load_cached_data(date_str)
+    cached_data = None if args.no_cache else load_cached_data(date_str)
     if cached_data:
-        print(f"[정보] {date_str}의 캐시된 데이터를 사용합니다.")
+        cache_name = f"{date_str}_raw_data.json"
+        print("=" * 60)
+        print(f"[경고] 캐시 사용: results/{cache_name}")
+        print("[경고] 1·2단계 API(Gemini JSON, Kakao 맛집)를 다시 호출하지 않습니다.")
+        print("[경고] errors 도 캐시 파일을 그대로 씁니다.")
+        print("[경고] 처음부터 다시 받으려면 --no-cache 를 붙이거나 그 JSON을 지우세요.")
+        print("=" * 60)
         recommendation = cached_data.get("recommendation", {})
         restaurants = cached_data.get("restaurants", [])
         tour_places = cached_data.get("tour_places") or {"attractions": [], "stays": []}
@@ -142,7 +138,7 @@ def main():
             print("오류: 1차 추천 정보를 생성하지 못했습니다. 프로그램을 종료합니다.")
             sys.exit(1)
 
-        recommended_city = recommendation.get("recommended_city", "대한민국")
+        recommended_city = recommendation["recommended_city"]
         print(f"  - recommended_city: {recommended_city}")
 
         print("[2/3] 맛집 검색 중(지도/장소 API)...")

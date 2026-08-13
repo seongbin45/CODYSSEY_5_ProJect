@@ -264,31 +264,12 @@ def select_model(api_key, preferred=None):
     if not models:
         raise RuntimeError("이 API 키로 조회된 모델이 없습니다.")
 
-    if preferred:
-        selected, error = resolve_model_choice(models, preferred)
-        if error:
-            print_model_catalog(models)
-            raise RuntimeError(error)
-        return model_id(selected)
-
-    print()
-    print_model_catalog(models)
-    print()
-    print("번호 또는 모델 이름을 입력하세요. gemini-2.5-flash 같은 일반 텍스트 모델만 사용합니다.")
-
-    while True:
-        try:
-            raw = input("> ")
-        except EOFError as exc:
-            raise RuntimeError(
-                "모델이 선택되지 않았습니다. --model 로 모델 ID를 넘기세요."
-            ) from exc
-
-        selected, error = resolve_model_choice(models, raw)
-        if error:
-            print(f"  - {error}")
-            continue
-        return model_id(selected)
+    name = preferred or "gemini-2.5-flash"
+    selected, error = resolve_model_choice(models, name)
+    if error:
+        print_model_catalog(models)
+        raise RuntimeError(error)
+    return model_id(selected)
 
 
 def get_available_models(api_key):
@@ -463,6 +444,33 @@ def verify_all_models(api_key):
     return report
 
 
+REQUIRED_RECOMMENDATION_KEYS = ("recommended_city", "weather", "events", "reason")
+
+
+def recommendation_schema_error(data):
+    """1차 JSON에 필수 4키가 있고 값이 비어 있지 않은지 검사한다. 문제 없으면 None."""
+    if not isinstance(data, dict):
+        return "응답이 JSON 객체가 아닙니다."
+    missing = [key for key in REQUIRED_RECOMMENDATION_KEYS if key not in data]
+    if missing:
+        return "필수 키 누락: {0}".format(", ".join(missing))
+    city = data.get("recommended_city")
+    weather = data.get("weather")
+    reason = data.get("reason")
+    events = data.get("events")
+    if not isinstance(city, str) or not city.strip():
+        return "recommended_city 가 비어 있습니다."
+    if not isinstance(weather, str) or not weather.strip():
+        return "weather 가 비어 있습니다."
+    if not isinstance(reason, str) or not reason.strip():
+        return "reason 가 비어 있습니다."
+    if not isinstance(events, list) or not 1 <= len(events) <= 3:
+        return "events 는 문자열 1~3개 배열이어야 합니다."
+    if not all(isinstance(item, str) and item.strip() for item in events):
+        return "events 항목이 빈 문자열이거나 문자열이 아닙니다."
+    return None
+
+
 def get_recommendation(api_key, model_name, date_str, errors):
     """
     1단계: LLM에게 여행 날짜를 주고 추천 도시 정보를 JSON으로 받는다.
@@ -499,14 +507,13 @@ def get_recommendation(api_key, model_name, date_str, errors):
     for attempt in range(2):  # 최대 2회 (1차 + 재시도 1회)
         try:
             text = _call_gemini(api_key, model_name, prompt, response_json=True)
+            if not text:
+                raise ValueError("Gemini 응답 본문이 비어 있습니다.")
             recommendation = json.loads(text)
-
-            # 필수 키 검증
-            required_keys = ["recommended_city", "weather", "events", "reason"]
-            for key in required_keys:
-                if key not in recommendation:
-                    raise ValueError(f"필수 키 누락: {key}")
-
+            schema_error = recommendation_schema_error(recommendation)
+            if schema_error:
+                raise ValueError(schema_error)
+            recommendation["recommended_city"] = recommendation["recommended_city"].strip()
             return recommendation
 
         except json.JSONDecodeError as e:
@@ -569,10 +576,14 @@ def generate_report(
     else:
         errors_text = "없음"
 
+    extra_note = ""
+    if tour_places and any(tour_places.get(key) for key in ("attractions", "stays", "related", "crowd")):
+        extra_note += f"\n추가 관광 데이터(일정에만 반영, 별도 절 만들지 말 것):\n{tour_json}\n"
+    if transit_legs:
+        extra_note += f"\n추가 이동 데이터(일정에만 반영, 별도 절 만들지 말 것):\n{transit_json}\n"
+
     prompt = f"""당신은 한국 국내 여행 가이드입니다.
 아래 데이터를 기반으로 여행 리포트를 Markdown 형식으로 작성하세요.
-
-## 입력 데이터
 
 여행 날짜: {date_str}
 
@@ -581,57 +592,24 @@ def generate_report(
 
 맛집 목록:
 {restaurants_json}
-
-TourAPI 데이터(중심 관광지/연관 관광지/집중률, 없을 수 있음):
-{tour_json}
-
-TMAP 이동 정보(도보/대중교통, 없을 수 있음):
-{transit_json}
-
+{extra_note}
 오류 요약:
 {errors_text}
 
-## 출력 형식
-
-아래 Markdown 구조를 정확히 따르세요. Markdown 텍스트만 출력하세요.
+아래 절만 사용하세요. 다른 제목을 추가하지 마세요. Markdown만 출력하세요.
 
 # {date_str} 국내 여행 추천 리포트
 
 ## 추천 지역
-(추천 도시명과 간단한 소개)
-
 ## 추천 이유
-(추천 근거 요약)
-
 ## 날씨 요약
-(해당 시기 날씨 요약)
-
 ## 행사/축제
-(행사 목록, 불릿 포인트로)
-
 ## 맛집 추천
-(맛집 목록을 표 또는 리스트로 정리. 맛집 데이터가 없으면 "데이터 없음 (장소 검색 결과 0건)" 표기)
-
-## 관광지
-(TourAPI 중심 관광지 또는 공식 관광지가 있으면 목록으로. 없으면 "데이터 없음")
-
-## 숙소
-(KorService2 공식 숙소가 있으면 주소와 함께 목록으로. 없으면 "데이터 없음")
-
-## 연관 관광지
-(함께 많이 가는 장소가 있으면 목록으로. 없으면 "데이터 없음")
-
-## 혼잡/집중률
-(집중률이 있으면 날짜와 함께 표기. 100에 가까울수록 붐빔. 없으면 "데이터 없음")
-
+(맛집 데이터가 없으면 "데이터 없음")
 ## 1일 일정 제안
-(오전/오후/저녁 일정 제안. 관광지/맛집/TMAP 이동 정보가 있으면 일정에 반영)
-
-## 이동 정보
-(TMAP 데이터가 있으면 구간별 도보/대중교통을 정리. 없으면 "데이터 없음")
-
+(오전/오후/저녁)
 ## 오류 요약
-(에러가 있으면 표기, 없으면 "없음")"""
+(없으면 "없음")"""
 
     try:
         report = _call_gemini(api_key, model_name, prompt, response_json=False)
@@ -678,69 +656,12 @@ def _fallback_report(
     else:
         restaurants_str = "데이터 없음 (장소 검색 결과 0건)"
 
-    tour_places = tour_places or {}
-    attractions = tour_places.get("attractions") or []
-    stays = tour_places.get("stays") or []
-    related = tour_places.get("related") or []
-    crowd = tour_places.get("crowd") or []
-    if attractions:
-        attractions_str = "\n".join(
-            f"- {p.get('rank', '')}. {p.get('name', '')} ({p.get('category', '')})"
-            for p in attractions
-        )
-    else:
-        attractions_str = "데이터 없음"
-    if stays:
-        stays_str = "\n".join(
-            f"- {p.get('name', '')} ({p.get('address', '')})" for p in stays
-        )
-    else:
-        stays_str = "데이터 없음"
-    if related:
-        related_str = "\n".join(
-            f"- {p.get('from', '')} → {p.get('name', '')} ({p.get('category', '')})"
-            for p in related
-        )
-    else:
-        related_str = "데이터 없음"
-    if crowd:
-        crowd_str = "\n".join(
-            f"- {p.get('name', '')}: {p.get('date', '')} 집중률 {p.get('rate', '')}"
-            for p in crowd
-        )
-    else:
-        crowd_str = "데이터 없음"
-
     if errors:
         errors_str = "\n".join(
             f"- [{e['step']}] {e['type']}: {e['message']}" for e in errors
         )
     else:
         errors_str = "없음"
-
-    if transit_legs:
-        transit_lines = []
-        for leg in transit_legs:
-            walk = leg.get("walk") or {}
-            transit = leg.get("transit") or {}
-            walk_txt = (
-                f"도보 {walk.get('minutes')}분/{walk.get('distance_m')}m"
-                if walk else "도보 정보 없음"
-            )
-            if transit:
-                transit_txt = (
-                    f"대중교통 {transit.get('minutes')}분, "
-                    f"환승 {transit.get('transfers')}회, "
-                    f"요금 {transit.get('fare')}원"
-                )
-            else:
-                transit_txt = "대중교통 정보 없음"
-            transit_lines.append(
-                f"- {leg.get('from')} → {leg.get('to')}: {walk_txt} / {transit_txt}"
-            )
-        transit_str = "\n".join(transit_lines)
-    else:
-        transit_str = "데이터 없음"
 
     return f"""# {date_str} 국내 여행 추천 리포트
 
@@ -759,25 +680,10 @@ def _fallback_report(
 ## 맛집 추천
 {restaurants_str}
 
-## 관광지
-{attractions_str}
-
-## 숙소
-{stays_str}
-
-## 연관 관광지
-{related_str}
-
-## 혼잡/집중률
-{crowd_str}
-
 ## 1일 일정 제안
 - 오전: {city} 주요 관광지 방문
 - 오후: 맛집 탐방 및 자유 시간
 - 저녁: 야경 감상 또는 지역 특색 체험
-
-## 이동 정보
-{transit_str}
 
 ## 오류 요약
 {errors_str}

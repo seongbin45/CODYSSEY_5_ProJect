@@ -33,34 +33,12 @@ def results_dir():
     return path
 
 
-def load_runtime_env(key_server_url=None, key_server_token=None):
-    """
-    로컬 .env 를 읽는다.
-    --key-server 또는 KEY_SERVER_URL 을 명시한 경우에만 키 서버를 호출한다.
-    이미 있는 환경변수는 덮어쓰지 않는다.
-    """
+def load_runtime_env():
+    """프로젝트 폴더의 .env 를 환경변수로 읽는다. 키 서버는 호출하지 않는다."""
     from dotenv import load_dotenv
-
-    from key_client import fetch_keys_from_server
 
     load_dotenv(os.path.join(resource_dir(), ".env"), override=False)
     load_dotenv(os.path.join(app_dir(), ".env"), override=True)
-
-    url = (key_server_url or os.environ.get("KEY_SERVER_URL", "")).strip()
-    token = (key_server_token or os.environ.get("KEY_SERVER_TOKEN", "")).strip()
-    if not url:
-        return
-
-    print(f"[정보] 키 서버에서 설정을 불러옵니다: {url}")
-    try:
-        applied = fetch_keys_from_server(url, token)
-    except Exception as exc:
-        print(f"[오류] 키 서버 요청 실패: {exc}")
-        return
-    if applied:
-        print(f"[정보] 키 서버에서 받은 항목: {', '.join(applied)}")
-    else:
-        print("[정보] 키 서버 응답에 새로 적용할 키가 없습니다.")
 
 
 def validate_date(date_str):
@@ -113,16 +91,13 @@ def check_api_keys(require_kakao=True):
             print(f"  - {key_name}")
         print()
         print("[설정 방법]")
-        print("  1. 개발: 프로젝트 .env 에 제공자 키를 넣습니다.")
-        print("  2. 평가용 exe: 키 서버를 띄운 뒤 KEY_SERVER_URL / KEY_SERVER_TOKEN 만 사용합니다.")
-        print("     python key_server.py")
-        print('     travel_planner.exe --key-server http://HOST:8787/keys --key-token TOKEN')
+        print("  1. copy .env.example .env")
+        print("  2. .env 의 GEMINI_API_KEY, KAKAO_REST_API_KEY 에 키를 붙입니다.")
+        print("  3. 다시: python travel_planner.py -date 2026-03-15")
         print()
         print("[키 발급 위치]")
         print("  - Gemini: https://aistudio.google.com/apikey")
         print("  - Kakao:  https://developers.kakao.com/ → 내 애플리케이션 → REST API 키")
-        print("  - TMAP(선택): https://openapi.sk.com/ → 앱 키(appKey)")
-        print("  - TourAPI(선택): 공공데이터포털 한국관광공사 국문 관광정보 서비스")
         print("=" * 60)
         return None
 

@@ -17,7 +17,6 @@ a = Analysis(
         'api_tmap',
         'api_tour',
         'utils',
-        'key_client',
     ],
     hookspath=[],
     hooksconfig={},

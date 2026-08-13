@@ -17,4 +17,4 @@ pip install pyinstaller
 pyinstaller --noconfirm --clean --distpath export --workpath build travel_planner.spec
 ```
 
-exe는 `.env`를 묶지 않습니다 (`datas=[]`). 키는 exe 옆 `.env` 또는 `--key-server`로만 넣습니다.
+exe는 `.env`를 묶지 않습니다 (`datas=[]`). 키는 exe 옆 `.env`에 둡니다.
