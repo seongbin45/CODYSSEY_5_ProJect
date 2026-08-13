@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.git
+build
+export
+results
+__pycache__
+*.zip
+*.exe
+*.md
+!README.md
+!DEPLOY.md

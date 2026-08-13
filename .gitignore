@@ -15,3 +15,10 @@ venv/
 node_modules/
 .DS_Store
 Thumbs.db
+results/
+build/
+과제조건.txt
+*키는 이거다*
+*_probe_*.py
+*_smoke_*.py
+export/
