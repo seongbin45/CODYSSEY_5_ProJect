@@ -16,6 +16,8 @@
     input, select { background: #10161c; color: inherit; }
     button { background: #3b82f6; color: white; border: 0; cursor: pointer; }
     button:disabled { opacity: 0.6; cursor: wait; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+    .actions a { display: inline-block; padding: 10px 12px; border-radius: 8px; background: #243140; color: #93c5fd; text-decoration: none; }
     pre, article { background: #182029; padding: 16px; border-radius: 14px; overflow: auto; }
     .muted { color: #8b9aaa; font-size: 0.85rem; }
     .err { color: #fda4af; }
@@ -25,6 +27,7 @@
   <main>
     <h1>국내 여행지 추천</h1>
     <p class="lead">날짜를 넣으면 서버가 Gemini · Kakao · TourAPI · TMAP을 이어서 리포트를 만듭니다. API 키는 브라우저로 내려가지 않습니다.</p>
+    <p><a href="/results">저장된 리포트 저장소 열기</a></p>
     <form id="plan-form">
       <label>여행 날짜
         <input type="date" name="date" required value="2026-08-20">
@@ -40,17 +43,20 @@
     <h2>진행 로그</h2>
     <pre id="logs">대기 중</pre>
     <h2>리포트</h2>
+    <div id="result-actions" class="actions" hidden></div>
     <article id="report"><p class="muted">아직 없습니다.</p></article>
   </main>
   <script>
     const form = document.getElementById("plan-form");
     const logs = document.getElementById("logs");
     const report = document.getElementById("report");
+    const actions = document.getElementById("result-actions");
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const button = form.querySelector("button");
       button.disabled = true;
       logs.textContent = "생성 중...";
+      actions.hidden = true;
       report.innerHTML = "<p class='muted'>생성 중...</p>";
       const data = new FormData(form);
       try {
@@ -65,6 +71,11 @@
         logs.className = "";
         logs.textContent = (body.logs || []).join("\n");
         report.innerHTML = "<pre>" + (body.report_md || "") + "</pre>";
+        actions.hidden = false;
+        actions.innerHTML =
+          '<a href="' + (body.report_url || "/results") + '">저장된 Markdown 열기</a>' +
+          '<a href="' + (body.raw_url || "/results") + '">원본 JSON 열기</a>' +
+          '<a href="' + (body.results_url || "/results") + '">저장소 전체 보기</a>';
       } catch (err) {
         logs.className = "err";
         logs.textContent = String(err);

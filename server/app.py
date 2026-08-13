@@ -11,10 +11,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 from pipeline import PipelineError, list_usable_models, run_pipeline
-from utils import check_api_keys
+from utils import check_api_keys, results_dir
 
 load_dotenv()
 
@@ -73,15 +73,69 @@ def api_plan(date: str = Form(...), model: str = Form(""), use_cache: bool = For
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    date = result["date"]
     return {
-        "date": result["date"],
+        "date": date,
         "model": result["model"],
         "logs": result["logs"],
         "errors": result["errors"],
         "report_md": result["report_md"],
         "recommendation": result["recommendation"],
         "restaurants": result["restaurants"],
+        "report_url": f"/results/{date}_travel_plan.md",
+        "raw_url": f"/results/{date}_raw_data.json",
+        "results_url": "/results",
     }
+
+
+def _safe_result_file(name):
+    if not name or "/" in name or "\\" in name or name.startswith("."):
+        raise HTTPException(status_code=400, detail="잘못된 파일 이름입니다.")
+    if not (name.endswith(".md") or name.endswith(".json")):
+        raise HTTPException(status_code=400, detail="md 또는 json만 열 수 있습니다.")
+    path = Path(results_dir()) / name
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="파일이 없습니다.")
+    return path
+
+
+@app.get("/results", response_class=HTMLResponse)
+def results_index():
+    folder = Path(results_dir())
+    files = sorted(
+        [item.name for item in folder.iterdir() if item.suffix in {".md", ".json"}],
+        reverse=True,
+    )
+    rows = []
+    for name in files:
+        rows.append(
+            f'<li><a href="/results/{html.escape(name)}">{html.escape(name)}</a></li>'
+        )
+    body = "\n".join(rows) if rows else "<li class='muted'>아직 저장된 파일이 없습니다.</li>"
+    return HTMLResponse(
+        f"""<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><title>저장된 리포트</title>
+<style>
+body {{ font-family: sans-serif; background:#0f1419; color:#e7ecf1; margin:0; }}
+main {{ max-width:880px; margin:0 auto; padding:32px 20px; }}
+a {{ color:#93c5fd; }}
+ul {{ line-height:1.9; }}
+.muted {{ color:#8b9aaa; }}
+</style></head>
+<body><main>
+  <p><a href="/">← 추천 페이지</a></p>
+  <h1>저장된 리포트</h1>
+  <p class="muted">서버 results 폴더의 Markdown / JSON 입니다.</p>
+  <ul>{body}</ul>
+</main></body></html>"""
+    )
+
+
+@app.get("/results/{name}")
+def results_file(name: str):
+    path = _safe_result_file(name)
+    media = "text/markdown" if path.suffix == ".md" else "application/json"
+    return FileResponse(path, media_type=media, filename=path.name)
 
 
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
