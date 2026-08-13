@@ -31,13 +31,7 @@
       </label>
       <label>모델
         <select name="model">
-          {% if models %}
-            {% for item in models %}
-              <option value="{{ item }}" {% if item == default_model %}selected{% endif %}>{{ item }}</option>
-            {% endfor %}
-          {% else %}
-            <option value="gemini-2.5-flash">gemini-2.5-flash</option>
-          {% endif %}
+          <option value="gemini-2.5-flash">gemini-2.5-flash</option>
         </select>
       </label>
       <button type="submit">리포트 생성</button>

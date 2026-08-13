@@ -2,15 +2,16 @@
 FastAPI 웹 서버.
 
 제공자 키는 호스팅 환경변수에만 둔다. 브라우저/응답으로 키를 내려주지 않는다.
+Jinja TemplateResponse 는 Starlette 버전마다 인자 순서가 달라서 쓰지 않는다.
 """
 
+import html
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from pipeline import PipelineError, list_usable_models, run_pipeline
 from utils import check_api_keys
@@ -18,9 +19,27 @@ from utils import check_api_keys
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+INDEX_HTML = (BASE_DIR / "templates" / "index.html").read_text(encoding="utf-8")
 
 app = FastAPI(title="국내 여행지 추천", docs_url=None, redoc_url=None)
+
+
+def _render_index(models, default_model="gemini-2.5-flash"):
+    choices = models or [default_model]
+    options = []
+    for item in choices:
+        selected = " selected" if item == default_model else ""
+        options.append(
+            f'<option value="{html.escape(item)}"{selected}>{html.escape(item)}</option>'
+        )
+    page = INDEX_HTML
+    # 서버에서 모델 목록만 채워 넣고, 나머지 화면은 정적 HTML이다.
+    start = page.find('<select name="model">')
+    end = page.find("</select>", start)
+    if start == -1 or end == -1:
+        return page
+    select = '<select name="model">\n' + "\n".join(options) + "\n        </select>"
+    return page[:start] + select + page[end + len("</select>"):]
 
 
 @app.get("/health")
@@ -63,8 +82,8 @@ def api_plan(date: str = Form(...), model: str = Form(""), use_cache: bool = For
     }
 
 
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def home():
     models = []
     keys = check_api_keys(require_kakao=False)
     if keys:
@@ -72,12 +91,4 @@ def home(request: Request):
             models = list_usable_models(keys[0])
         except Exception:
             models = []
-    context = {
-        "request": request,
-        "models": models,
-        "default_model": "gemini-2.5-flash",
-    }
-    try:
-        return templates.TemplateResponse(request, "index.html", context)
-    except TypeError:
-        return templates.TemplateResponse("index.html", context)
+    return HTMLResponse(_render_index(models))
