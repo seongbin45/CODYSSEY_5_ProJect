@@ -40,6 +40,7 @@ Kakao: https://developers.kakao.com/ → 앱 → **REST API 키**. 같은 앱에
 python travel_planner.py -date "2026-03-15"
 ```
 
+모델은 기본값 `gemini-2.5-flash`입니다. `--model`을 붙이지 않아도 됩니다.  
 `-date`가 과제 옵션입니다. `--date`도 같은 값으로 동작합니다.  
 Windows에서 `python`이 안 되면 `py -3`으로 바꿔 치면 됩니다.
 

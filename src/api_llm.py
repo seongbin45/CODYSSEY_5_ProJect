@@ -154,18 +154,6 @@ def list_models(api_key):
     return models
 
 
-def find_model(models, query):
-    """번호가 아닌 이름(짧은 ID 또는 models/...)으로 목록에서 찾는다."""
-    if not query:
-        return None
-    needle = query.strip()
-    needle_id = model_id(needle)
-    for item in models:
-        if needle == item.get("name") or needle_id == model_id(item):
-            return item
-    return None
-
-
 def format_model_catalog(models):
     """화면에 뿌릴 모델 목록 문자열."""
     lines = []
@@ -200,85 +188,6 @@ def print_model_catalog(models):
     header, body = format_model_catalog(models)
     print(header)
     print(body)
-
-
-def resolve_model_choice(models, raw_choice):
-    """
-    사용자 입력(번호 또는 모델 이름)을 모델 dict로 바꾼다.
-
-    Returns:
-        (model_dict | None, error_message | None)
-    """
-    choice = (raw_choice or "").strip()
-    if not choice:
-        return None, "번호 또는 모델 이름을 입력하세요."
-
-    if choice.isdigit():
-        index = int(choice) - 1
-        if 0 <= index < len(models):
-            selected = models[index]
-        else:
-            return None, f"1부터 {len(models)} 사이의 번호를 입력하세요."
-    else:
-        selected = find_model(models, choice)
-        if selected is None:
-            return None, f"목록에 없는 모델입니다: {choice}"
-
-    if not is_allowed_model(selected):
-        row = compat_row_for(selected)
-        if row and not row.get("usable"):
-            reason = row.get("error") or "교차검증 실패"
-            return None, (
-                f"'{model_id(selected)}' 는 교차검증에서 탈락했습니다: {reason}"
-            )
-        return None, (
-            f"'{model_id(selected)}' 는 이 프로그램의 텍스트/JSON 호출에 맞지 않습니다. "
-            "gemini-2.5-flash 같은 일반 텍스트 모델을 고르거나 --verify-models 로 재검증하세요."
-        )
-    return selected, None
-
-
-def select_model(api_key, preferred=None):
-    """
-    키로 모델 목록을 받은 뒤 사용할 모델을 정한다.
-
-    preferred가 있으면 그 이름이 목록에 있고 generateContent를 지원하는지 확인한다.
-    없으면 목록을 보여 주고 사용자가 고른다.
-
-    Returns:
-        선택한 모델의 짧은 ID (예: gemini-2.5-flash)
-
-    Raises:
-        RuntimeError: 목록 조회 실패, 선택 불능, 입력이 끝났는데 선택이 안 된 경우
-    """
-    try:
-        models = list_models(api_key)
-    except requests.exceptions.HTTPError as exc:
-        status = exc.response.status_code if exc.response is not None else "?"
-        raise RuntimeError(
-            f"모델 목록 조회 실패 (HTTP {status}). GEMINI_API_KEY와 권한을 확인하세요."
-        ) from exc
-    except requests.exceptions.RequestException as exc:
-        raise RuntimeError(f"모델 목록 조회 실패: {exc}") from exc
-
-    if not models:
-        raise RuntimeError("이 API 키로 조회된 모델이 없습니다.")
-
-    name = preferred or "gemini-2.5-flash"
-    selected, error = resolve_model_choice(models, name)
-    if error:
-        print_model_catalog(models)
-        raise RuntimeError(error)
-    return model_id(selected)
-
-
-def get_available_models(api_key):
-    """하위 호환: generateContent 모델의 짧은 ID 리스트."""
-    try:
-        return [model_id(m) for m in list_models(api_key) if is_allowed_model(m)]
-    except requests.exceptions.RequestException as exc:
-        print(f"[오류] 모델 목록 조회 실패: {exc}")
-        return []
 
 
 def _call_gemini(api_key, model_name, prompt, response_json=False, timeout=60):
@@ -540,6 +449,12 @@ def get_recommendation(api_key, model_name, date_str, errors):
         except (KeyError, IndexError, ValueError) as e:
             if attempt == 0:
                 print(f"  - 응답 구조 오류, 재시도 중... ({e})")
+                prompt += (
+                    "\n\n이전 응답 오류: {0}\n"
+                    "필수 키만 다시 JSON으로 출력하세요: "
+                    "recommended_city, weather, events, reason. "
+                    "다른 키와 설명 텍스트는 넣지 마세요."
+                ).format(e)
                 continue
             else:
                 add_error(errors, "llm_recommendation", "PARSE_ERROR",
