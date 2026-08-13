@@ -72,11 +72,12 @@ def home(request: Request):
             models = list_usable_models(keys[0])
         except Exception:
             models = []
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "models": models,
-            "default_model": "gemini-2.5-flash",
-        },
-    )
+    context = {
+        "request": request,
+        "models": models,
+        "default_model": "gemini-2.5-flash",
+    }
+    try:
+        return templates.TemplateResponse(request, "index.html", context)
+    except TypeError:
+        return templates.TemplateResponse("index.html", context)
