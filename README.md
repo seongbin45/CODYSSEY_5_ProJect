@@ -133,23 +133,21 @@ KEY_SERVER_TOKEN=
 - TMAP: https://openapi.sk.com/
 - TourAPI: 공공데이터포털 (KorService2 + LocgoHubTarService1 + TarRlteTarService1 + TatsCnctrRateService, 같은 `serviceKey`)
 
-### 방법 B. `travel_planner.exe` 또는 `.env`에 Gemini 키가 없을 때
+### 방법 B. exe가 서버에서 제공자 키를 받을 때
 
-`utils.load_runtime_env()` 동작:
+`KEY_SERVER_TOKEN`은 Kakao/Google이 발급하지 않습니다. 이 PC에서 만들고 Render에 붙입니다.
 
-1. `resource_dir()/.env`를 읽고, 이어서 `app_dir()/.env`를 읽는다.
-2. `GEMINI_API_KEY`가 이미 있고 `--key-server` / `KEY_SERVER_URL`이 없으면 **서버를 부르지 않는다.**
-3. Gemini 키가 없고 URL도 없으면 `key_client.DEFAULT_KEY_SERVER_URL`  
-   (`https://codyssey-5-project.onrender.com/api/keys`)을 쓴다.
-4. URL이 있으면 `GET` + 헤더 `Authorization: Bearer {KEY_SERVER_TOKEN}`.
-5. 서버 JSON의 네 키만 `os.environ`에 넣는다. **이미 있는 이름은 덮어쓰지 않는다.**
+만드는 명령, Render 클릭, `GET /api/keys` 확인은 **`main`이 아니라** `fastapi-web` 설명에 있습니다.
+
+https://github.com/seongbin45/CODYSSEY_5_ProJect/tree/fastapi-web
+
+exe 한 줄만 보면:
 
 ```bat
-python travel_planner.py --key-server https://codyssey-5-project.onrender.com/api/keys --key-token 토큰 --date "2026-08-20" --model gemini-2.5-flash
+travel_planner.exe --key-server https://codyssey-5-project.onrender.com/api/keys --key-token 토큰 --date "2026-08-20" --model gemini-2.5-flash
 ```
 
-토큰이 Render Environment의 `KEY_SERVER_TOKEN`과 다르면 HTTP 401입니다.  
-Render에 `KEY_SERVER_TOKEN` 자체가 없으면 HTTP 500입니다.
+`토큰`은 Render Environment의 `KEY_SERVER_TOKEN`과 같아야 합니다. 값 자체는 이 브랜치 README에 적지 않습니다.
 
 ---
 
@@ -231,7 +229,10 @@ pyinstaller --noconfirm --clean --distpath export --workpath build travel_planne
 
 ## 브랜치
 
-- `main` : 이 폴더의 정리된 코드
-- `fastapi-web` : Render가 배포할 때 보는 브랜치. `main`과 같은 커밋을 맞춰 둡니다.
+- `main` (지금 문서) : 과제 CLI. 로컬 `.env`에 제공자 키를 두고 `python travel_planner.py --date ...`
+- `fastapi-web` : Render 웹과 `GET /api/keys`. **토큰 만드는 법, Render Environment, exe가 키를 받는 순서**는 이쪽 README가 `main`과 다릅니다.  
+  https://github.com/seongbin45/CODYSSEY_5_ProJect/tree/fastapi-web
+
+두 브랜치의 README를 같게 맞추지 않습니다.
 
 `.env`, `KEY_SERVER_TOKEN` 값, `export/*.exe`, `docs/*.zip`은 GitHub에 올리지 않습니다. (`.gitignore`)

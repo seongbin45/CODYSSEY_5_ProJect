@@ -1,7 +1,10 @@
-# FastAPI를 Render에 올리는 순서 (`fastapi-web` 브랜치)
+# FastAPI 배포 메모 (`main`에서는 요약만)
 
-Render Web Service가 `fastapi-web` 브랜치의 `Dockerfile` / `render.yaml`을 읽어 `uvicorn server.app:app`을 켭니다.  
-제공자 API 키와 `KEY_SERVER_TOKEN`은 GitHub에 올리지 말고 Render Dashboard → Environment에만 넣습니다.
+웹 서버·토큰 만들기·Render 클릭의 **전체 재현 순서**는 `fastapi-web`에 있습니다. 이 파일만 보고 따라 하지 마세요.
+
+https://github.com/seongbin45/CODYSSEY_5_ProJect/tree/fastapi-web
+
+아래는 주소만 적습니다.
 
 ---
 
