@@ -79,3 +79,13 @@ results/              출력
 - `--list-models` / `--verify-models` / `--model`
 - `export/` PyInstaller exe
 - 웹·키 서버: 브랜치 `fastapi-web`
+
+---
+
+## 모델 목록이 바뀌면
+
+Google은 Gemini 모델 이름과 제공 목록을 주기적으로 바꿉니다. 모델 변경은 불가피합니다.
+
+이 프로그램의 기본값은 코드에 박힌 `gemini-2.5-flash`입니다. 그 이름이 사라지거나 `generateContent`와 맞지 않게 바뀌면, 코드를 고치지 않고는 채점 경로를 유지할 수 없습니다. 모델 목록을 코드에 고정하는 한 유지보수는 불가능합니다.
+
+그때는 `--list-models`로 키가 보는 현재 목록을 확인하고, `--model`로 새 이름을 넘기거나 `travel_planner.py`의 `DEFAULT_MODEL`을 바꾸면 됩니다.
