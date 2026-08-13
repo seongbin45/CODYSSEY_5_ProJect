@@ -152,9 +152,17 @@ Render → 해당 Web Service → **Environment** → **Add Environment Variable
 
 ```
 GEMINI_API_KEY
+```
+```
 KAKAO_REST_API_KEY
+```
+```
 TMAP_OPEN_API_APP_KEY
+```
+```
 TOUR_API_SERVICE_KEY
+```
+```
 KEY_SERVER_TOKEN
 ```
 
