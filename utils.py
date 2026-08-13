@@ -77,14 +77,25 @@ def validate_date(date_str):
         return False
 
 
+def normalize_secret(value):
+    """환경변수에 붙은 따옴표, Bearer/KakaoAK 접두어를 제거한다."""
+    text = (value or "").strip().strip('"').strip("'").strip()
+    for prefix in ("KakaoAK ", "kakaoak ", "Bearer "):
+        if text.startswith(prefix):
+            text = text[len(prefix):].strip()
+    return text
+
+
 def check_api_keys(require_kakao=True):
     """
     필수 API 키가 환경변수에 설정되어 있는지 확인한다.
     """
-    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    kakao_key = os.environ.get("KAKAO_REST_API_KEY", "").strip()
-    tmap_key = os.environ.get("TMAP_OPEN_API_APP_KEY", "").strip()
-    tour_key = os.environ.get("TOUR_API_SERVICE_KEY", "").strip()
+    gemini_key = normalize_secret(os.environ.get("GEMINI_API_KEY", ""))
+    kakao_key = normalize_secret(
+        os.environ.get("KAKAO_REST_API_KEY") or os.environ.get("KAKAO_API_KEY") or ""
+    )
+    tmap_key = normalize_secret(os.environ.get("TMAP_OPEN_API_APP_KEY", ""))
+    tour_key = normalize_secret(os.environ.get("TOUR_API_SERVICE_KEY", ""))
 
     missing = []
     if not gemini_key:

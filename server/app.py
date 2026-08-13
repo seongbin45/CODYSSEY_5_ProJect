@@ -45,10 +45,12 @@ def _render_index(models, default_model="gemini-2.5-flash"):
 @app.get("/health")
 def health():
     keys = check_api_keys(require_kakao=False)
+    kakao = (keys[1] if keys else "") or ""
     return {
         "ok": True,
         "gemini": bool(keys and keys[0]),
-        "kakao": bool(os.environ.get("KAKAO_REST_API_KEY", "").strip()),
+        "kakao": bool(kakao),
+        "kakao_key_len": len(kakao),
     }
 
 
