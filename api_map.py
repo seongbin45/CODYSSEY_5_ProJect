@@ -60,21 +60,15 @@ def search_restaurants(api_key, city_name, errors):
         response = requests.get(KAKAO_API_URL, headers=headers, params=params, timeout=30)
         
         if response.status_code in (401, 403):
-            detail = ""
-            try:
-                body = response.json()
-                detail = body.get("errorMessage") or body.get("msg") or body.get("message") or ""
-            except ValueError:
-                detail = (response.text or "")[:160]
             add_error(
                 errors,
                 "place_search",
                 "AUTH_ERROR",
-                "Kakao API 인증 실패 (HTTP {0}){1}. "
-                "Render 환경변수 KAKAO_REST_API_KEY 가 REST API 키인지, "
-                "카카오맵 사용 설정이 ON 인지 확인하세요.".format(
+                "Kakao API 인증 실패 (HTTP {0}). 키 길이는 {1}자입니다. "
+                "REST API 키는 보통 32자 16진수입니다. Render 값에 따옴표/잘림이 없는지, "
+                "JavaScript 키가 아닌 REST 키인지, 카카오맵 ON 인지 확인하세요.".format(
                     response.status_code,
-                    f": {detail}" if detail else "",
+                    len(api_key or ""),
                 ),
             )
             return []
