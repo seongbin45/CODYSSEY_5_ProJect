@@ -16,7 +16,10 @@ node_modules/
 .DS_Store
 Thumbs.db
 results/
+!results/README.md
 build/
+export/
+!export/README.md
 과제조건.txt
 *키는 이거다*
 *_probe_*.py
