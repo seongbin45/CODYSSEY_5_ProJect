@@ -20,6 +20,16 @@ def _as_number(value):
         return None
 
 
+def kakao_place_url(url):
+    """place.map.kakao.com 주소를 https 로 맞춘다. 없으면 빈 문자열."""
+    text = (url or "").strip()
+    if not text:
+        return ""
+    if text.startswith("http://place.map.kakao.com"):
+        return "https://" + text[len("http://"):]
+    return text
+
+
 def _parse_restaurant(doc):
     """
     Kakao API 응답 1건을 과제에서 요구하는 형식으로 변환한다.
@@ -28,7 +38,7 @@ def _parse_restaurant(doc):
         "name": doc.get("place_name", ""),
         "address": doc.get("road_address_name") or doc.get("address_name", ""),
         "category": doc.get("category_name", ""),
-        "url": doc.get("place_url", ""),
+        "url": kakao_place_url(doc.get("place_url", "")),
         "x": _as_number(doc.get("x")),
         "y": _as_number(doc.get("y")),
     }

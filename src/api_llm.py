@@ -464,6 +464,49 @@ def get_recommendation(api_key, model_name, date_str, errors):
     return None
 
 
+def format_restaurants_md(restaurants):
+    """맛집 절은 모델이 아니라 검색 결과로 고정한다. url 이 있으면 카카오맵 링크."""
+    from api_map import kakao_place_url
+
+    if not restaurants:
+        return "데이터 없음"
+    lines = []
+    for item in restaurants:
+        name = item.get("name") or "이름 없음"
+        address = item.get("address") or ""
+        category = item.get("category") or ""
+        url = kakao_place_url(item.get("url"))
+        link = "[카카오맵]({0})".format(url) if url else "링크 없음"
+        extra = []
+        if category:
+            extra.append(category)
+        if address:
+            extra.append(address)
+        suffix = " ({0})".format(", ".join(extra)) if extra else ""
+        lines.append("- **{0}**{1} — {2}".format(name, suffix, link))
+    return "\n".join(lines)
+
+
+def replace_md_section(report_md, heading, body):
+    """'## 제목' 절만 갈아끼운다. 없으면 오류 요약 앞에 붙인다."""
+    import re
+
+    text = report_md or ""
+    pattern = r"(## {0}\s*\n)(.*?)(?=\n## |\Z)".format(re.escape(heading))
+
+    def repl(match):
+        return match.group(1) + body + "\n"
+
+    new_text, count = re.subn(pattern, repl, text, count=1, flags=re.S)
+    if count:
+        return new_text
+    marker = "\n## 오류 요약"
+    block = "\n## {0}\n{1}\n".format(heading, body)
+    if marker in text:
+        return text.replace(marker, block + marker, 1)
+    return text.rstrip() + block
+
+
 def generate_report(
     api_key,
     model_name,
@@ -528,7 +571,10 @@ def generate_report(
 
     try:
         report = _call_gemini(api_key, model_name, prompt, response_json=False)
-        return report
+        if report:
+            return replace_md_section(
+                report, "맛집 추천", format_restaurants_md(restaurants)
+            )
 
     except requests.exceptions.RequestException as e:
         add_error(errors, "llm_report", "NETWORK_ERROR",
@@ -556,20 +602,7 @@ def _fallback_report(
 
     events_str = "\n".join(f"- {e}" for e in events) if events else "- 정보 없음"
 
-    if restaurants:
-        restaurant_lines = []
-        for r in restaurants:
-            restaurant_lines.append(
-                f"| {r.get('name', '')} | {r.get('address', '')} | "
-                f"{r.get('category', '')} | {r.get('url', '')} |"
-            )
-        restaurants_str = (
-            "| 이름 | 주소 | 카테고리 | URL |\n"
-            "|------|------|----------|-----|\n"
-            + "\n".join(restaurant_lines)
-        )
-    else:
-        restaurants_str = "데이터 없음 (장소 검색 결과 0건)"
+    restaurants_str = format_restaurants_md(restaurants)
 
     if errors:
         errors_str = "\n".join(
