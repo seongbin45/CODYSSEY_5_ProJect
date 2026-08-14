@@ -464,8 +464,19 @@ def get_recommendation(api_key, model_name, date_str, errors):
     return None
 
 
+ALLOWED_REPORT_HEADINGS = (
+    "추천 지역",
+    "추천 이유",
+    "날씨 요약",
+    "행사/축제",
+    "맛집 추천",
+    "1일 일정 제안",
+    "오류 요약",
+)
+
+
 def format_restaurants_md(restaurants):
-    """맛집 절은 모델이 아니라 검색 결과로 고정한다. url 이 있으면 카카오맵 링크."""
+    """맛집 절은 검색 결과로 고정한다. 주소는 한 줄로 두어 메모장에서도 클릭된다."""
     from api_map import kakao_place_url
 
     if not restaurants:
@@ -476,15 +487,31 @@ def format_restaurants_md(restaurants):
         address = item.get("address") or ""
         category = item.get("category") or ""
         url = kakao_place_url(item.get("url"))
-        link = "[카카오맵]({0})".format(url) if url else "링크 없음"
         extra = []
         if category:
             extra.append(category)
         if address:
             extra.append(address)
         suffix = " ({0})".format(", ".join(extra)) if extra else ""
-        lines.append("- **{0}**{1} — {2}".format(name, suffix, link))
+        lines.append("- **{0}**{1}".format(name, suffix))
+        if url:
+            lines.append("  {0}".format(url))
+        else:
+            lines.append("  링크 없음")
     return "\n".join(lines)
+
+
+def keep_allowed_sections(report_md, allowed=ALLOWED_REPORT_HEADINGS):
+    """모델이 넣은 관광지·숙소 등 과제 밖 제목을 뺀다."""
+    lines = (report_md or "").splitlines()
+    out = []
+    keep = True
+    for line in lines:
+        if line.startswith("## "):
+            keep = line[3:].strip() in allowed
+        if keep:
+            out.append(line)
+    return "\n".join(out).rstrip() + "\n"
 
 
 def replace_md_section(report_md, heading, body):
@@ -572,6 +599,7 @@ def generate_report(
     try:
         report = _call_gemini(api_key, model_name, prompt, response_json=False)
         if report:
+            report = keep_allowed_sections(report)
             return replace_md_section(
                 report, "맛집 추천", format_restaurants_md(restaurants)
             )

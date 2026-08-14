@@ -91,9 +91,14 @@ def check_api_keys(require_kakao=True):
             print(f"  - {key_name}")
         print()
         print("[설정 방법]")
-        print("  1. copy .env.example .env")
-        print("  2. .env 의 GEMINI_API_KEY, KAKAO_REST_API_KEY 에 키를 붙입니다.")
-        print("  3. 다시: python travel_planner.py -date 2026-03-15")
+        if getattr(sys, "frozen", False):
+            print("  1. travel_planner.exe 와 같은 폴더에 .env 파일을 만듭니다.")
+            print("  2. GEMINI_API_KEY= 와 KAKAO_REST_API_KEY= 뒤에 키를 붙입니다.")
+            print("  3. exe를 다시 실행합니다.")
+        else:
+            print("  1. copy .env.example .env")
+            print("  2. .env 의 GEMINI_API_KEY, KAKAO_REST_API_KEY 에 키를 붙입니다.")
+            print("  3. 다시: python travel_planner.py -date 2026-03-15")
         print()
         print("[키 발급 위치]")
         print("  - Gemini: https://aistudio.google.com/apikey")
