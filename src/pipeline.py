@@ -41,19 +41,32 @@ def trip_days(start_str, end_str):
     return (end - start).days + 1
 
 
-def run_pipeline(date_str, model_name=None, use_cache=True, city=None, end_date=None):
-    if not validate_date(date_str):
+def validate_trip_dates(start_str, end_str):
+    """시작일·종료일을 검사하고 (시작, 종료, 일수)를 돌려준다. 종료 생략 시 당일."""
+    start_str = (start_str or "").strip()
+    end_raw = (end_str or "").strip()
+    if not validate_date(start_str):
         raise PipelineError("시작 날짜 형식이 올바르지 않습니다 (YYYY-MM-DD).")
-
-    city = (city or "").strip() or None
-    end_date = (end_date or "").strip() or date_str
-    if not validate_date(end_date):
+    end_str = end_raw or start_str
+    if not validate_date(end_str):
         raise PipelineError("종료 날짜 형식이 올바르지 않습니다 (YYYY-MM-DD).")
-    days = trip_days(date_str, end_date)
-    if days < 1:
-        raise PipelineError("종료일은 시작일보다 앞설 수 없습니다.")
+    start = datetime.strptime(start_str, "%Y-%m-%d")
+    end = datetime.strptime(end_str, "%Y-%m-%d")
+    if end < start:
+        raise PipelineError(
+            "종료일({0})이 시작일({1})보다 앞설 수 없습니다.".format(end_str, start_str)
+        )
+    days = (end - start).days + 1
     if days > 7:
-        raise PipelineError("일정은 최대 7일까지입니다.")
+        raise PipelineError(
+            "일정은 시작일부터 최대 7일까지입니다. 지금 {0}일입니다.".format(days)
+        )
+    return start_str, end_str, days
+
+
+def run_pipeline(date_str, model_name=None, use_cache=True, city=None, end_date=None):
+    date_str, end_date, days = validate_trip_dates(date_str, end_date)
+    city = (city or "").strip() or None
 
     keys = check_api_keys(require_kakao=True)
     if not keys:

@@ -109,8 +109,8 @@ def api_plan(
             date,
             model_name=model or None,
             use_cache=use_cache,
-            city=city or None,
-            end_date=end_date or None,
+            city=(city or "").strip() or None,
+            end_date=(end_date or "").strip() or None,
         )
     except PipelineError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

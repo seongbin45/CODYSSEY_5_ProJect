@@ -70,10 +70,58 @@
     const logs = document.getElementById("logs");
     const report = document.getElementById("report");
     const actions = document.getElementById("result-actions");
+    const startInput = form.elements.date;
+    const endInput = form.elements.end_date;
+
+    function showError(message) {
+      logs.className = "err";
+      logs.textContent = message;
+      actions.hidden = true;
+      report.innerHTML = "";
+    }
+
+    function syncEndMin() {
+      const start = startInput.value;
+      if (start) endInput.min = start;
+      else endInput.removeAttribute("min");
+      if (endInput.value && start && endInput.value < start) {
+        endInput.setCustomValidity("종료일은 시작일보다 앞설 수 없습니다.");
+      } else {
+        endInput.setCustomValidity("");
+      }
+    }
+
+    function dateError() {
+      const start = startInput.value;
+      const end = endInput.value;
+      if (!start) return "시작일을 입력하세요.";
+      if (end && end < start) {
+        return "종료일(" + end + ")이 시작일(" + start + ")보다 앞설 수 없습니다.";
+      }
+      if (start && end) {
+        const ms = Date.parse(end) - Date.parse(start);
+        const days = Math.floor(ms / 86400000) + 1;
+        if (days > 7) return "일정은 시작일부터 최대 7일까지입니다. 지금 " + days + "일입니다.";
+      }
+      return "";
+    }
+
+    startInput.addEventListener("change", syncEndMin);
+    endInput.addEventListener("change", syncEndMin);
+    syncEndMin();
+
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      syncEndMin();
+      const localError = dateError();
+      if (localError) {
+        showError(localError);
+        endInput.reportValidity();
+        return;
+      }
       const button = form.querySelector("button");
       button.disabled = true;
+      logs.className = "";
       logs.textContent = "생성 중...";
       actions.hidden = true;
       report.innerHTML = "<p class='muted'>생성 중...</p>";
@@ -82,9 +130,11 @@
         const res = await fetch("/api/plan", { method: "POST", body: data });
         const body = await res.json();
         if (!res.ok) {
-          logs.className = "err";
-          logs.textContent = body.detail || JSON.stringify(body);
-          report.textContent = "";
+          const detail = body.detail;
+          const message = typeof detail === "string"
+            ? detail
+            : (detail && detail[0] && detail[0].msg) || JSON.stringify(body);
+          showError(message);
           return;
         }
         logs.className = "";
