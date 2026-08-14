@@ -97,24 +97,38 @@ def api_models():
 
 
 @app.post("/api/plan")
-def api_plan(date: str = Form(...), model: str = Form(""), use_cache: bool = Form(True)):
+def api_plan(
+    date: str = Form(...),
+    model: str = Form(""),
+    use_cache: bool = Form(True),
+    city: str = Form(""),
+    end_date: str = Form(""),
+):
     try:
-        result = run_pipeline(date, model_name=model or None, use_cache=use_cache)
+        result = run_pipeline(
+            date,
+            model_name=model or None,
+            use_cache=use_cache,
+            city=city or None,
+            end_date=end_date or None,
+        )
     except PipelineError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    date = result["date"]
+    stem = result.get("stem") or result["date"]
     return {
-        "date": date,
+        "date": result["date"],
+        "end_date": result.get("end_date"),
+        "days": result.get("days", 1),
         "model": result["model"],
         "logs": result["logs"],
         "errors": result["errors"],
         "report_md": result["report_md"],
         "recommendation": result["recommendation"],
         "restaurants": result["restaurants"],
-        "report_url": f"/results/{date}_travel_plan.md",
-        "raw_url": f"/results/{date}_raw_data.json",
+        "report_url": f"/results/{stem}_travel_plan.md",
+        "raw_url": f"/results/{stem}_raw_data.json",
         "results_url": "/results",
     }
 

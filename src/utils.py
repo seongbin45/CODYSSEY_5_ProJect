@@ -137,6 +137,22 @@ def ensure_results_dir():
     return results_dir()
 
 
+def result_stem(date_str, city=None, end_date=None):
+    """results 파일 이름에 쓰는 접두어."""
+    import re
+
+    parts = [date_str]
+    city = (city or "").strip()
+    if city:
+        safe = re.sub(r"[^\w가-힣\-]", "", city)[:20]
+        if safe:
+            parts.append(safe)
+    end_date = (end_date or "").strip()
+    if end_date and end_date != date_str:
+        parts.append(end_date)
+    return "_".join(parts)
+
+
 def save_raw_data(
     date_str,
     recommendation,
@@ -145,14 +161,20 @@ def save_raw_data(
     model=None,
     transit_legs=None,
     tour_places=None,
+    stem=None,
+    end_date=None,
+    days=1,
 ):
     """
     원본 데이터를 JSON 파일로 저장한다.
     """
     ensure_results_dir()
+    stem = stem or date_str
 
     data = {
         "date": date_str,
+        "end_date": end_date or date_str,
+        "days": days,
         "model": model,
         "recommendation": recommendation,
         "restaurants": restaurants,
@@ -161,44 +183,33 @@ def save_raw_data(
         "errors": errors,
     }
 
-    filepath = os.path.join(results_dir(), f"{date_str}_raw_data.json")
+    filepath = os.path.join(results_dir(), f"{stem}_raw_data.json")
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
     return filepath
 
 
-def save_report(date_str, report_md):
+def save_report(date_str, report_md, stem=None):
     """
     최종 여행 리포트를 Markdown 파일로 저장한다.
-
-    Args:
-        date_str: 여행 날짜 (YYYY-MM-DD)
-        report_md: Markdown 형식의 리포트 문자열
-
-    Returns:
-        저장된 파일 경로
     """
     ensure_results_dir()
+    stem = stem or date_str
 
-    filepath = os.path.join(results_dir(), f"{date_str}_travel_plan.md")
+    filepath = os.path.join(results_dir(), f"{stem}_travel_plan.md")
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(report_md)
 
     return filepath
 
 
-def load_cached_data(date_str):
+def load_cached_data(date_str, stem=None):
     """
     캐시된 원본 데이터가 있으면 로드한다. (보너스: 결과 캐싱)
-
-    Args:
-        date_str: 여행 날짜 (YYYY-MM-DD)
-
-    Returns:
-        캐시된 데이터 dict 또는 None
     """
-    filepath = os.path.join(results_dir(), f"{date_str}_raw_data.json")
+    stem = stem or date_str
+    filepath = os.path.join(results_dir(), f"{stem}_raw_data.json")
     if os.path.exists(filepath):
         try:
             with open(filepath, "r", encoding="utf-8") as f:

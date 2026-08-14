@@ -34,7 +34,7 @@
     <div class="header-row">
       <div>
         <h1>국내 여행지 추천</h1>
-        <p class="lead">날짜를 넣으면 서버가 Gemini · Kakao · TourAPI · TMAP을 이어서 리포트를 만듭니다. API 키는 브라우저로 내려가지 않습니다.</p>
+        <p class="lead">목적지를 비우면 AI가 도시를 추천합니다. 종료일을 넣으면 여러 날 일정을 만듭니다. API 키는 브라우저로 내려가지 않습니다.</p>
       </div>
       <div class="header-actions">
         <a class="btn btn-primary" href="/results">저장된 리포트 저장소 열기</a>
@@ -42,8 +42,14 @@
       </div>
     </div>
     <form id="plan-form">
-      <label>여행 날짜
+      <label>시작일
         <input type="date" name="date" required value="2026-08-20">
+      </label>
+      <label>종료일 (비우면 당일)
+        <input type="date" name="end_date" value="">
+      </label>
+      <label>목적지 (비우면 AI가 추천)
+        <input type="text" name="city" placeholder="예: 제주, 경주, 부산" maxlength="20">
       </label>
       <label>모델
         <select name="model">

@@ -3,12 +3,15 @@ CLI와 FastAPI가 같이 쓰는 여행 추천 파이프라인.
 키는 프로세스 환경변수에만 두고 응답에 넣지 않는다.
 """
 
+from datetime import datetime
+
 from utils import (
     validate_date,
     check_api_keys,
     load_cached_data,
     save_raw_data,
     save_report,
+    result_stem,
 )
 from api_llm import (
     is_allowed_model,
@@ -32,9 +35,25 @@ def list_usable_models(gemini_key):
     return [model_id(item) for item in models if is_allowed_model(item)]
 
 
-def run_pipeline(date_str, model_name=None, use_cache=True):
+def trip_days(start_str, end_str):
+    start = datetime.strptime(start_str, "%Y-%m-%d")
+    end = datetime.strptime(end_str, "%Y-%m-%d")
+    return (end - start).days + 1
+
+
+def run_pipeline(date_str, model_name=None, use_cache=True, city=None, end_date=None):
     if not validate_date(date_str):
-        raise PipelineError("날짜 형식이 올바르지 않습니다 (YYYY-MM-DD).")
+        raise PipelineError("시작 날짜 형식이 올바르지 않습니다 (YYYY-MM-DD).")
+
+    city = (city or "").strip() or None
+    end_date = (end_date or "").strip() or date_str
+    if not validate_date(end_date):
+        raise PipelineError("종료 날짜 형식이 올바르지 않습니다 (YYYY-MM-DD).")
+    days = trip_days(date_str, end_date)
+    if days < 1:
+        raise PipelineError("종료일은 시작일보다 앞설 수 없습니다.")
+    if days > 7:
+        raise PipelineError("일정은 최대 7일까지입니다.")
 
     keys = check_api_keys(require_kakao=True)
     if not keys:
@@ -44,12 +63,21 @@ def run_pipeline(date_str, model_name=None, use_cache=True):
     preferred = model_name or "gemini-2.5-flash"
     selected_model = select_model(gemini_key, preferred=preferred)
 
+    stem = result_stem(date_str, city, end_date)
     logs = [f"선택된 모델: {selected_model}"]
+    if city:
+        logs.append(f"사용자 지정 목적지: {city}")
+    else:
+        logs.append("목적지 비움 → LLM이 도시를 추천합니다.")
+    if days == 1:
+        logs.append(f"일정: {date_str} 당일")
+    else:
+        logs.append(f"일정: {date_str} ~ {end_date} ({days - 1}박 {days}일)")
     errors = []
 
-    cached_data = load_cached_data(date_str) if use_cache else None
+    cached_data = load_cached_data(date_str, stem=stem) if use_cache else None
     if cached_data:
-        logs.append(f"캐시된 데이터 사용: {date_str}")
+        logs.append(f"캐시된 데이터 사용: {stem}")
         recommendation = cached_data.get("recommendation", {})
         restaurants = cached_data.get("restaurants", [])
         tour_places = cached_data.get("tour_places") or {"attractions": [], "stays": []}
@@ -58,9 +86,13 @@ def run_pipeline(date_str, model_name=None, use_cache=True):
         raw_filepath = None
     else:
         logs.append("[1/5] 1차 추천 생성 중(LLM)")
-        recommendation = get_recommendation(gemini_key, selected_model, date_str, errors)
+        recommendation = get_recommendation(
+            gemini_key, selected_model, date_str, errors, city=city
+        )
         if not recommendation:
             raise PipelineError("1차 추천 정보를 생성하지 못했습니다.")
+        if city:
+            recommendation["recommended_city"] = city
         recommended_city = recommendation.get("recommended_city", "대한민국")
         logs.append(f"recommended_city: {recommended_city}")
 
@@ -101,6 +133,9 @@ def run_pipeline(date_str, model_name=None, use_cache=True):
             model=selected_model,
             transit_legs=transit_legs,
             tour_places=tour_places,
+            stem=stem,
+            end_date=end_date,
+            days=days,
         )
         logs.append(f"원본 저장: {raw_filepath}")
 
@@ -114,12 +149,17 @@ def run_pipeline(date_str, model_name=None, use_cache=True):
         errors,
         transit_legs=transit_legs,
         tour_places=tour_places,
+        end_date=end_date,
+        days=days,
     )
-    report_filepath = save_report(date_str, report_md)
+    report_filepath = save_report(date_str, report_md, stem=stem)
     logs.append(f"리포트 저장: {report_filepath}")
 
     return {
         "date": date_str,
+        "end_date": end_date,
+        "days": days,
+        "stem": stem,
         "model": selected_model,
         "recommendation": recommendation,
         "restaurants": restaurants,

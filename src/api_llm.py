@@ -463,23 +463,28 @@ def verify_all_models(api_key):
     return report
 
 
-def get_recommendation(api_key, model_name, date_str, errors):
+def get_recommendation(api_key, model_name, date_str, errors, city=None):
     """
     1단계: LLM에게 여행 날짜를 주고 추천 도시 정보를 JSON으로 받는다.
-
-    Args:
-        api_key: Gemini API 키
-        model_name: 사용할 모델 이름
-        date_str: 여행 날짜 (YYYY-MM-DD)
-        errors: 오류 리스트 (수정됨)
-
-    Returns:
-        추천 정보 dict. 실패 시 None.
+    city 가 있으면 그 도시를 고정하고 날씨/행사/이유만 채운다.
     """
-    prompt = f"""당신은 한국 국내 여행 전문가입니다.
-사용자가 여행을 계획하는 날짜는 {date_str} 입니다.
+    city = (city or "").strip()
+    if city:
+        intro = (
+            f"사용자가 여행을 계획하는 날짜는 {date_str} 입니다.\n"
+            f"목적지는 사용자가 고른 '{city}' 입니다. "
+            f"recommended_city 는 반드시 '{city}' 로 두고, "
+            "그 도시의 날씨·행사·이유만 채우세요. 다른 도시로 바꾸지 마세요."
+        )
+    else:
+        intro = (
+            f"사용자가 여행을 계획하는 날짜는 {date_str} 입니다.\n"
+            "이 시기에 여행하기 좋은 국내 도시를 1곳 추천하세요."
+        )
 
-이 시기에 여행하기 좋은 국내 도시를 1곳 추천하고,
+    prompt = f"""당신은 한국 국내 여행 전문가입니다.
+{intro}
+
 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 포함하지 마세요.
 
 {{
@@ -551,9 +556,12 @@ def generate_report(
     errors,
     transit_legs=None,
     tour_places=None,
+    end_date=None,
+    days=1,
 ):
     """
     최종 Markdown 리포트를 생성한다.
+    days>1 이면 N일 일정을 쓴다. 과제 최소는 1일이다.
     """
     recommendation_json = json.dumps(recommendation, ensure_ascii=False, indent=2)
     restaurants_json = json.dumps(restaurants, ensure_ascii=False, indent=2)
@@ -569,12 +577,26 @@ def generate_report(
     else:
         errors_text = "없음"
 
+    days = max(1, int(days or 1))
+    end_date = end_date or date_str
+    if days <= 1:
+        period = f"여행 날짜: {date_str} (당일)"
+        schedule_heading = "## 1일 일정 제안\n(오전/오후/저녁 일정 제안. 관광지/맛집/TMAP 이동 정보가 있으면 일정에 반영)"
+    else:
+        nights = days - 1
+        period = f"여행 기간: {date_str} ~ {end_date} ({nights}박 {days}일)"
+        schedule_heading = (
+            f"## {days}일 일정 제안\n"
+            f"(1일차부터 {days}일차까지. 각 날은 오전/오후/저녁. "
+            f"1~{nights}일차에는 숙소를 넣고, 마지막 날은 귀가 일정으로 잡으세요.)"
+        )
+
     prompt = f"""당신은 한국 국내 여행 가이드입니다.
 아래 데이터를 기반으로 여행 리포트를 Markdown 형식으로 작성하세요.
 
 ## 입력 데이터
 
-여행 날짜: {date_str}
+{period}
 
 1차 추천 정보:
 {recommendation_json}
@@ -624,8 +646,7 @@ TMAP 이동 정보(도보/대중교통, 없을 수 있음):
 ## 혼잡/집중률
 (집중률이 있으면 날짜와 함께 표기. 100에 가까울수록 붐빔. 없으면 "데이터 없음")
 
-## 1일 일정 제안
-(오전/오후/저녁 일정 제안. 관광지/맛집/TMAP 이동 정보가 있으면 일정에 반영)
+{schedule_heading}
 
 ## 이동 정보
 (TMAP 데이터가 있으면 구간별 도보/대중교통을 정리. 없으면 "데이터 없음")

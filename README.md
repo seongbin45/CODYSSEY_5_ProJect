@@ -9,8 +9,13 @@
 | 제공자 키 | 로컬 `.env` | Render Environment |
 | `KEY_SERVER_TOKEN` | CLI만 쓰면 없어도 됨 | exe가 `GET /api/keys`를 부를 때 **반드시** 필요 |
 
-과제 본편(날짜 → Gemini JSON → Kakao GET → Markdown)은 `main`을 봅니다.  
+과제 본편(날짜 → Gemini JSON → Kakao GET → Markdown, **1일 일정**)은 `main`을 봅니다.  
 https://github.com/seongbin45/CODYSSEY_5_ProJect/tree/main
+
+과제에 없는 웹 확장:
+
+- 목적지 칸을 비우면 LLM이 도시를 추천합니다. 채우면 그 도시로 고정합니다.
+- 종료일을 넣으면 최대 7일(예: 2박 3일) 일정을 만듭니다. 비우면 당일입니다.
 
 이 파일은 **웹을 다시 올리고, 토큰을 만들고, exe가 서버에서 키를 받게** 하는 순서입니다. 위에서 아래로 따라 하면 됩니다.
 
