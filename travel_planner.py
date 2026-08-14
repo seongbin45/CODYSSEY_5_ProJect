@@ -39,6 +39,31 @@ from api_tour import search_official_places
 DEFAULT_MODEL = "gemini-2.5-flash"
 
 
+def running_as_exe():
+    return bool(getattr(sys, "frozen", False))
+
+
+def pause_if_exe():
+    if not running_as_exe():
+        return
+    try:
+        input("\n엔터를 누르면 창이 닫힙니다.")
+    except EOFError:
+        pass
+
+
+def ask_date():
+    print("여행 날짜를 YYYY-MM-DD 형식으로 입력하세요. 예: 2026-03-15")
+    while True:
+        try:
+            raw = input("날짜: ").strip().strip('"').strip("'")
+        except EOFError:
+            return None
+        if validate_date(raw):
+            return raw
+        print("오류: '{0}'는 YYYY-MM-DD 가 아닙니다.".format(raw))
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="API 활용 국내 여행지 추천 프로그램")
     parser.add_argument("-date", "--date", dest="date", help="여행 날짜 (YYYY-MM-DD). 과제 옵션은 -date")
@@ -65,12 +90,19 @@ def parse_args():
     )
     args = parser.parse_args()
     if not args.list_models and not args.verify_models and not args.date:
+        if running_as_exe():
+            return args, parser
         parser.error("-date 는 필수입니다. 예: python travel_planner.py -date 2026-03-15")
     return args, parser
 
 
 def main():
     args, parser = parse_args()
+
+    if not args.list_models and not args.verify_models and not args.date:
+        args.date = ask_date()
+        if not args.date:
+            sys.exit(1)
 
     os.chdir(app_dir())
     load_runtime_env()
@@ -106,6 +138,10 @@ def main():
         return
 
     date_str = args.date
+    if not date_str:
+        date_str = ask_date()
+        if not date_str:
+            sys.exit(1)
     if not validate_date(date_str):
         print(f"오류: '{date_str}'는 올바른 날짜 형식이 아닙니다 (YYYY-MM-DD).")
         parser.print_help()
@@ -209,4 +245,7 @@ if __name__ == "__main__":
             sys.stderr.reconfigure(encoding="utf-8")
         except Exception:
             pass
-    main()
+    try:
+        main()
+    finally:
+        pause_if_exe()
